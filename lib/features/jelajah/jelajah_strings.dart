@@ -10,6 +10,9 @@ class JelajahStrings {
   static const chipMingguIni = 'Minggu ini';
   static const kosongJudul = 'Sirkel tidak ditemukan';
   static const kosongPesan = 'Coba kata kunci atau filter lain.';
+  static const kosongMingguIniJudul = 'Sesi minggu ini sudah selesai';
+  static const kosongMingguIniPesan =
+      'Matikan chip Minggu ini untuk melihat semua sirkel.';
   static const buatSirkel = 'Buat sirkel';
 
   // Filter

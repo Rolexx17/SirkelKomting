@@ -36,10 +36,11 @@ class SirkelCard extends StatelessWidget {
     final kursiSedikit = sirkel.sisaKursi <= 2;
     final warnaKursi = kursiSedikit ? scheme.error : scheme.onSurface;
 
+    // InkWell di dalam Card: efek ripple tergambar di permukaan Card dan ikut
+    // terpotong sudut 16 karena Card memakai clipBehavior antiAlias (tema).
     return Card(
-      child: GestureDetector(
+      child: InkWell(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,

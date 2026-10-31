@@ -38,7 +38,9 @@ class FilterSirkel {
   bool cocok(Sirkel s) {
     if (mataKuliah.isNotEmpty && !mataKuliah.contains(s.mataKuliah)) return false;
     if (mode != null && s.mode != mode) return false;
-    if (hari.isNotEmpty && !hari.any((h) => nomorHari(h) == nomorHari(s.hari))) {
+    // Semua hari sirkel ikut dicocokkan, jadi "Senin & Rabu" lolos filter Sen maupun Rab.
+    if (hari.isNotEmpty &&
+        !hari.any((h) => s.daftarNomorHari.contains(nomorHari(h)))) {
       return false;
     }
     if (hanyaAdaKursi && s.penuh) return false;
