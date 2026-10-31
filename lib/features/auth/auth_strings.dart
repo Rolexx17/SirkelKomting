@@ -10,11 +10,17 @@ class AuthStrings {
   static const masukJudul = 'Selamat datang kembali';
   static const masukSubjudul = 'Masuk untuk lanjut belajar bareng sirkelmu.';
   static const lupaSandi = 'Lupa kata sandi?';
-  static const lupaSandiInfo =
-      'Tautan atur ulang kata sandi dikirim ke email kampusmu (simulasi).';
   static const masuk = 'Masuk';
   static const belumPunyaAkun = 'Belum punya akun? ';
   static const daftar = 'Daftar';
+
+  // Lupa kata sandi (bottom sheet)
+  static const lupaSandiJudul = 'Atur ulang kata sandi';
+  static const lupaSandiPesan =
+      'Masukkan email kampusmu. Kami akan mengirim tautan untuk membuat kata sandi baru.';
+  static const kirimTautan = 'Kirim tautan';
+  static String tautanTerkirim(String email) =>
+      'Tautan atur ulang dikirim ke $email (simulasi).';
 
   // Daftar
   static const kembali = 'Kembali';

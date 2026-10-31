@@ -29,8 +29,16 @@ class OnboardingPage extends StatelessWidget {
       builder: (context, constraints) {
         final gambar = Image.asset(item.gambar, fit: BoxFit.contain);
 
-        // P7: lebar ≥ 600 (tablet/landscape) → Row: ilustrasi kiri, teks kanan.
-        if (constraints.maxWidth >= Responsive.mediumBreakpoint) {
+        // P7: orientasi dibaca langsung dari layar. Row (ilustrasi kiri, teks kanan)
+        // dipakai saat landscape, karena tinggi layar terlalu pendek untuk Column,
+        // atau saat lebar ≥ 840 (desktop). Tablet portrait (mis. 768×1024) tetap
+        // Column: lebarnya ≥ 600, tetapi layarnya tinggi sehingga Column lebih lega.
+        final landscape =
+            MediaQuery.orientationOf(context) == Orientation.landscape;
+        final pakaiRow = landscape ||
+            constraints.maxWidth >= Responsive.expandedBreakpoint;
+
+        if (pakaiRow) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSizes.xxl),
             child: Row(
