@@ -32,6 +32,11 @@ class _BuatSirkelScreenState extends State<BuatSirkelScreen> {
   final Set<String> _hari = {};
   int _kuota = 6;
 
+  /// true setelah "Terbitkan sirkel" pernah ditekan (untuk menyegarkan pesan validasi).
+  bool _sudahKirim = false;
+
+  static const _jamBawaan = TimeOfDay(hour: 16, minute: 0);
+
   static const _kuotaMin = 2;
   static const _kuotaMaks = 12;
   static const _tinggiSampul = 136.0;
@@ -55,6 +60,35 @@ class _BuatSirkelScreenState extends State<BuatSirkelScreen> {
     if (hasil != null && mounted) setState(() => _sampul = hasil);
   }
 
+  /// Membuka time picker Material 3 (format 24 jam) dan menulis hasilnya sebagai "HH.MM".
+  Future<void> _pilihJam() async {
+    final awal = _jamDariTeks(_jam.text) ?? _jamBawaan;
+    final hasil = await showTimePicker(
+      context: context,
+      initialTime: awal,
+      helpText: BuatSirkelStrings.pilihJam,
+      // Paksa tampilan 24 jam walaupun pengaturan perangkat memakai AM/PM.
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (hasil == null || !mounted) return;
+
+    final jj = hasil.hour.toString().padLeft(2, '0');
+    final mm = hasil.minute.toString().padLeft(2, '0');
+    setState(() => _jam.text = '$jj.$mm');
+    // Bila tombol Terbitkan sudah pernah ditekan, segarkan pesan validasi.
+    if (_sudahKirim) _formKey.currentState?.validate();
+  }
+
+  /// Teks "HH.MM" di kolom Jam menjadi TimeOfDay; null bila kosong atau formatnya salah.
+  TimeOfDay? _jamDariTeks(String teks) {
+    if (!_polaJam.hasMatch(teks.trim())) return null;
+    final bagian = teks.trim().split('.');
+    return TimeOfDay(hour: int.parse(bagian[0]), minute: int.parse(bagian[1]));
+  }
+
   /// Gabungan nama hari terpilih sesuai urutan minggu, misalnya "Senin & Rabu".
   /// Kata pertama tetap nama hari agar fungsi `nomorHari` di fitur Jelajah bisa membacanya.
   String _hariTeks() {
@@ -68,6 +102,7 @@ class _BuatSirkelScreenState extends State<BuatSirkelScreen> {
   }
 
   void _terbitkan() {
+    _sudahKirim = true;
     // validate() menjalankan semua validator: mata kuliah, judul, hari, dan jam.
     if (!_formKey.currentState!.validate()) return;
 
@@ -299,17 +334,26 @@ class _BuatSirkelScreenState extends State<BuatSirkelScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: AppTextField(
-                label: BuatSirkelStrings.jam,
-                icon: Icons.schedule,
-                controller: _jam,
-                keyboardType: TextInputType.datetime,
-                validator: (v) {
-                  final isi = v?.trim() ?? '';
-                  if (isi.isEmpty) return BuatSirkelStrings.jamWajib;
-                  if (!_polaJam.hasMatch(isi)) return BuatSirkelStrings.jamFormat;
-                  return null;
-                },
+              // AppTextField (milik Richie) tidak diubah: dibungkus dari luar.
+              // AbsorbPointer menahan ketukan agar keyboard tidak muncul, lalu
+              // GestureDetector di luarnya membuka time picker.
+              child: GestureDetector(
+                onTap: _pilihJam,
+                child: AbsorbPointer(
+                  child: AppTextField(
+                    label: BuatSirkelStrings.jam,
+                    icon: Icons.schedule,
+                    controller: _jam,
+                    validator: (v) {
+                      final isi = v?.trim() ?? '';
+                      if (isi.isEmpty) return BuatSirkelStrings.jamWajib;
+                      if (!_polaJam.hasMatch(isi)) {
+                        return BuatSirkelStrings.jamFormat;
+                      }
+                      return null;
+                    },
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: AppSizes.sm),

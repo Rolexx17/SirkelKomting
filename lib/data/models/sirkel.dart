@@ -1,3 +1,4 @@
+import '../util/waktu_data.dart';
 import 'app_user.dart';
 
 /// Cara sesi sirkel berlangsung. Ditaruh di file ini karena selalu dipakai bersama [Sirkel].
@@ -29,7 +30,8 @@ class Sirkel {
   /// Path sampul dari `AppAssets`.
   final String cover;
 
-  /// Nama hari lengkap, misalnya "Kamis".
+  /// Nama hari lengkap, misalnya "Kamis", atau beberapa hari hasil Buat Sirkel
+  /// seperti "Senin & Rabu" dan "Senin, Rabu & Jumat".
   final String hari;
 
   /// Jam mulai format "HH.MM", misalnya "19.00".
@@ -47,6 +49,10 @@ class Sirkel {
 
   /// Sirkel penuh bila tidak ada kursi tersisa (<= 0 untuk berjaga-jaga).
   bool get penuh => sisaKursi <= 0;
+
+  /// Nomor hari ISO (Senin = 1 … Minggu = 7) dari [hari], misalnya "Senin & Rabu" → [1, 3].
+  /// Dipakai jadwal sesi dan filter hari agar sirkel multi-hari dikenali semua harinya.
+  List<int> get daftarNomorHari => nomorHariDariTeks(hari);
 
   /// Membuat salinan dengan sebagian field diganti. Karena semua field `final`,
   /// menambah anggota dilakukan dengan membuat objek baru, bukan mengubah objek lama.

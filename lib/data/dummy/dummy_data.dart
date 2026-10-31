@@ -7,16 +7,18 @@ import '../models/materi.dart';
 import '../models/notifikasi.dart';
 import '../models/sesi.dart';
 import '../models/sirkel.dart';
+import '../util/waktu_data.dart';
 
 /// Data contoh seluruh aplikasi (Bagian 11 brief), disimpan di memori selama aplikasi berjalan.
 ///
-/// List disimpan privat; layar hanya membaca lewat getter dan mengubah lewat
-/// fungsi [gabung] dan [tambahSirkel], sehingga perubahan data terkendali di satu tempat.
+/// Data awal ditulis sebagai konstanta `...Awal`; data yang bisa berubah disimpan di
+/// variabel privat dan hanya diubah lewat fungsi di kelas ini, sehingga semua layar
+/// membaca sumber yang sama dan selalu sinkron.
 class DummyData {
   DummyData._();
 
   // ---------------- Pengguna ----------------
-  static const _nadia = AppUser(
+  static const _nadiaAwal = AppUser(
     id: 'u1',
     nama: 'Nadia Putri',
     prodi: 'Sistem Informasi',
@@ -94,7 +96,7 @@ class DummyData {
     avatar: AppAssets.avatarKevin,
   );
 
-  static const _pengguna = [_nadia, _raka, _sinta, _dimas, _lia, _kevin];
+  static const _penggunaAwal = [_nadiaAwal, _raka, _sinta, _dimas, _lia, _kevin];
 
   // ---------------- Mata kuliah ----------------
   // Urutannya sama dengan AppAssets.covers, jadi indeks mata kuliah = indeks sampulnya.
@@ -112,9 +114,8 @@ class DummyData {
   static const lokasiOnlineBawaan = 'Google Meet';
   static const lokasiOfflineBawaan = 'Kampus (lokasi menyusul)';
 
-  // `final` (bukan const) karena list ini bisa bertambah dan diganti isinya.
-  static final List<Sirkel> _sirkel = [
-    const Sirkel(
+  static const _sirkelAwal = [
+    Sirkel(
       id: 's1',
       mataKuliah: 'Kalkulus I',
       judul: 'Limit & Turunan',
@@ -126,11 +127,11 @@ class DummyData {
       lokasi: 'Google Meet',
       level: levelBawaan,
       mentor: _raka,
-      anggota: [_nadia, _sinta, _dimas, _lia, _kevin],
+      anggota: [_nadiaAwal, _sinta, _dimas, _lia, _kevin],
       mode: ModeBelajar.online,
       kuota: 8,
     ),
-    const Sirkel(
+    Sirkel(
       id: 's2',
       mataKuliah: 'Struktur Data',
       judul: 'Tree & Graph',
@@ -142,11 +143,11 @@ class DummyData {
       lokasi: 'Perpustakaan Lt. 2',
       level: levelBawaan,
       mentor: _sinta,
-      anggota: [_nadia, _raka, _dimas, _lia, _kevin, _bima],
+      anggota: [_nadiaAwal, _raka, _dimas, _lia, _kevin, _bima],
       mode: ModeBelajar.offline,
       kuota: 10,
     ),
-    const Sirkel(
+    Sirkel(
       id: 's3',
       mataKuliah: 'Basis Data',
       judul: 'Normalisasi 1NF–3NF',
@@ -158,11 +159,11 @@ class DummyData {
       lokasi: 'Ruang Diskusi B',
       level: levelBawaan,
       mentor: _kevin,
-      anggota: [_nadia, _lia, _dimas],
+      anggota: [_nadiaAwal, _lia, _dimas],
       mode: ModeBelajar.offline,
       kuota: 6,
     ),
-    const Sirkel(
+    Sirkel(
       id: 's4',
       mataKuliah: 'Statistika',
       judul: 'Uji Hipotesis',
@@ -178,7 +179,7 @@ class DummyData {
       mode: ModeBelajar.online,
       kuota: 8,
     ),
-    const Sirkel(
+    Sirkel(
       id: 's5',
       mataKuliah: 'Pemrograman Mobile',
       judul: 'Layout di Flutter',
@@ -194,7 +195,7 @@ class DummyData {
       mode: ModeBelajar.online,
       kuota: 8,
     ),
-    const Sirkel(
+    Sirkel(
       id: 's6',
       mataKuliah: 'B. Inggris Akademik',
       judul: 'Latihan Presentasi',
@@ -212,11 +213,10 @@ class DummyData {
     ),
   ];
 
-  /// Id sirkel yang diikuti Nadia (pengguna aktif).
-  static final List<String> _diikuti = ['s1', 's2', 's3'];
+  static const _diikutiAwal = ['s1', 's2', 's3'];
 
-  /// Nomor id sirkel baru berikutnya (s7, s8, ...).
-  static int _nomorBerikut = 7;
+  /// Rentang jadwal sesi yang ditampilkan, mulai sekarang.
+  static const rentangJadwalHari = 14;
 
   // ---------------- Materi ----------------
   static const _materi = [
@@ -285,7 +285,7 @@ class DummyData {
   ];
 
   // ---------------- Notifikasi ----------------
-  static const _notifikasi = [
+  static const _notifikasiAwal = [
     Notifikasi(
       id: 'n1',
       teks: '**Sesi Kalkulus I** dimulai 1 jam lagi. Siapkan soal yang mau dibahas.',
@@ -333,38 +333,90 @@ class DummyData {
     ),
   ];
 
-  // ---------------- Sesi & lencana ----------------
-  // Tahun 2025 dipakai agar nama hari cocok dengan brief (9 Okt 2025 = Kamis).
-  static final _sesi = [
-    Sesi(sirkelId: 's1', waktu: DateTime(2025, 10, 9, 19)),
-    Sesi(sirkelId: 's2', waktu: DateTime(2025, 10, 11, 10)),
-    Sesi(sirkelId: 's3', waktu: DateTime(2025, 10, 15, 16)),
-  ];
-
+  // ---------------- Lencana & statistik ----------------
   static const _lencana = [
     Lencana(nama: 'Rajin Hadir', ikon: Icons.emoji_events),
     Lencana(nama: 'Anggota Aktif', ikon: Icons.groups),
     Lencana(nama: 'Pembagi Materi', ikon: Icons.menu_book),
     Lencana(nama: 'Sesi Pertama', ikon: Icons.star),
+    Lencana(nama: 'Penanya Aktif', ikon: Icons.forum),
   ];
+  static const _jumlahLencanaTerbaru = 4;
+  static const _jamBelajar = 24;
+
+  // ---------------- State yang bisa berubah ----------------
+  // Diisi dari data awal; resetUntukTes() mengembalikannya ke kondisi ini.
+  static AppUser _aktif = _nadiaAwal;
+  static List<Sirkel> _sirkel = List.of(_sirkelAwal);
+  static List<String> _diikuti = List.of(_diikutiAwal);
+  static List<Notifikasi> _notifikasi = List.of(_notifikasiAwal);
+  static Set<String> _sirkelDisimpan = {};
+  static Set<String> _materiDisimpan = {};
+
+  /// Nomor id sirkel baru berikutnya (s7, s8, ...).
+  static int _nomorBerikut = 7;
 
   // ---------------- Getter (hanya baca) ----------------
-  static AppUser get penggunaAktif => _nadia;
-  static List<AppUser> get pengguna => _pengguna;
+  /// Pengguna yang sedang masuk (awalnya Nadia); bisa berubah lewat [ubahProfil].
+  static AppUser get penggunaAktif => _aktif;
 
-  /// Salinan tak-bisa-diubah; perubahan hanya lewat [gabung] dan [tambahSirkel].
+  /// Enam pengguna utama; Nadia diganti versi terbarunya bila profil diubah.
+  static List<AppUser> get pengguna => [
+        for (final u in _penggunaAwal) u.id == _aktif.id ? _aktif : u,
+      ];
+
+  /// Salinan tak-bisa-diubah; perubahan hanya lewat fungsi di kelas ini.
   static List<Sirkel> get semuaSirkel => List.unmodifiable(_sirkel);
 
   static List<Sirkel> get sirkelDiikuti =>
       _diikuti.map(cariSirkel).whereType<Sirkel>().toList();
 
   static List<Materi> get semuaMateri => _materi;
-  static List<Notifikasi> get notifikasi => _notifikasi;
-  static List<Sesi> get jadwalSesi => List.unmodifiable(_sesi);
-  static List<Lencana> get lencanaTerbaru => _lencana;
   static List<String> get daftarMataKuliah => _mataKuliah;
 
-  // ---------------- Fungsi ----------------
+  static List<Notifikasi> get notifikasi => List.unmodifiable(_notifikasi);
+  static bool get adaNotifikasiBaru => _notifikasi.any((n) => n.belumDibaca);
+
+  static List<Lencana> get semuaLencana => _lencana;
+  static List<Lencana> get lencanaTerbaru =>
+      _lencana.take(_jumlahLencanaTerbaru).toList();
+  static int get jumlahJamBelajar => _jamBelajar;
+
+  /// Sesi dari semua sirkel yang diikuti, dari sekarang sampai 14 hari ke depan.
+  /// Dihitung ulang setiap kali dibaca, jadi tanggalnya selalu mengikuti hari ini.
+  static List<Sesi> get jadwalSesi => jadwalSesiSejak(DateTime.now());
+
+  /// Versi [jadwalSesi] dengan waktu acuan tertentu (dipakai test agar hasilnya pasti).
+  static List<Sesi> jadwalSesiSejak(DateTime sekarang) {
+    final batas = sekarang.add(const Duration(days: rentangJadwalHari));
+    final hasil = <Sesi>[];
+
+    for (final sirkel in sirkelDiikuti) {
+      final menit = menitDariJam(sirkel.jam);
+      if (menit == null) continue;
+      final hariSesi = sirkel.daftarNomorHari;
+
+      // Periksa setiap tanggal dari hari ini sampai 14 hari ke depan; ambil yang
+      // harinya cocok. DateTime otomatis menyesuaikan pergantian bulan/tahun.
+      for (var i = 0; i <= rentangJadwalHari; i++) {
+        final waktu = DateTime(
+          sekarang.year,
+          sekarang.month,
+          sekarang.day + i,
+          menit ~/ 60,
+          menit % 60,
+        );
+        if (!hariSesi.contains(waktu.weekday)) continue;
+        // Sesi hari ini yang jamnya sudah lewat, atau yang melewati batas, tidak dihitung.
+        if (waktu.isBefore(sekarang) || waktu.isAfter(batas)) continue;
+        hasil.add(Sesi(sirkelId: sirkel.id, waktu: waktu));
+      }
+    }
+
+    return hasil..sort((a, b) => a.waktu.compareTo(b.waktu));
+  }
+
+  // ---------------- Fungsi sirkel ----------------
   static Sirkel? cariSirkel(String id) =>
       _sirkel.where((s) => s.id == id).firstOrNull;
 
@@ -373,21 +425,26 @@ class DummyData {
 
   static bool sudahGabung(String sirkelId) => _diikuti.contains(sirkelId);
 
-  /// Menambah Nadia ke anggota sirkel dan ke [sirkelDiikuti].
-  /// Diabaikan bila id tidak ada, sudah bergabung, atau sirkel penuh.
+  /// true bila pengguna aktif adalah mentor sirkel tersebut (misalnya sirkel buatannya).
+  static bool adalahMentorSirkel(String sirkelId) =>
+      cariSirkel(sirkelId)?.mentor.id == _aktif.id;
+
+  /// Menambah pengguna aktif ke anggota sirkel dan ke [sirkelDiikuti], sehingga
+  /// sesinya otomatis muncul di [jadwalSesi]. Diabaikan bila id tidak ada,
+  /// sudah bergabung, atau sirkel penuh.
   static void gabung(String sirkelId) {
     final i = _sirkel.indexWhere((s) => s.id == sirkelId);
     if (i == -1 || sudahGabung(sirkelId) || _sirkel[i].penuh) return;
 
     final lama = _sirkel[i];
     // Objek Sirkel tidak bisa diubah, jadi diganti dengan salinan berisi anggota baru.
-    _sirkel[i] = lama.copyWith(anggota: [...lama.anggota, _nadia]);
+    _sirkel[i] = lama.copyWith(anggota: [...lama.anggota, _aktif]);
     _diikuti.add(sirkelId);
   }
 
-  /// Membuat sirkel baru dengan Nadia sebagai mentornya, lalu mengembalikan id barunya.
-  /// Sirkel baru diletakkan paling atas agar langsung terlihat di Jelajah, dan ikut
-  /// masuk [sirkelDiikuti] karena pembuatnya pasti terlibat di sirkel itu.
+  /// Membuat sirkel baru dengan pengguna aktif sebagai mentornya, lalu mengembalikan id barunya.
+  /// Sirkel baru diletakkan paling atas agar langsung terlihat di Jelajah, dan masuk
+  /// [sirkelDiikuti] supaya jadwalnya muncul di Sirkel Saya.
   static String tambahSirkel({
     required String mataKuliah,
     required String judul,
@@ -405,7 +462,7 @@ class DummyData {
         mataKuliah: mataKuliah,
         judul: judul,
         deskripsi:
-            'Sirkel baru dari ${_nadia.nama}. Detail materi akan dibagikan mentor sebelum sesi pertama.',
+            'Sirkel baru dari ${_aktif.nama}. Detail materi akan dibagikan mentor sebelum sesi pertama.',
         cover: cover,
         hari: hari,
         jam: jam,
@@ -413,7 +470,7 @@ class DummyData {
             ? lokasiOnlineBawaan
             : lokasiOfflineBawaan,
         level: levelBawaan,
-        mentor: _nadia,
+        mentor: _aktif,
         anggota: const [],
         mode: mode,
         kuota: kuota,
@@ -421,5 +478,66 @@ class DummyData {
     );
     _diikuti.add(id);
     return id;
+  }
+
+  // ---------------- Profil ----------------
+  /// Mengganti nama, prodi, dan (opsional) peran pengguna aktif. Objek pengguna di
+  /// anggota dan mentor semua sirkel ikut diganti (dicocokkan lewat id), supaya nama
+  /// baru tampil di Beranda, Detail Sirkel, SirkelCard, dan layar lain.
+  static void ubahProfil({
+    required String nama,
+    required String prodi,
+    bool? mentor,
+  }) {
+    final baru = _aktif.copyWith(nama: nama, prodi: prodi, isMentor: mentor);
+    _aktif = baru;
+    _sirkel = [
+      for (final s in _sirkel)
+        s.copyWith(
+          mentor: s.mentor.id == baru.id ? baru : s.mentor,
+          anggota: [for (final a in s.anggota) a.id == baru.id ? baru : a],
+        ),
+    ];
+  }
+
+  // ---------------- Notifikasi ----------------
+  static void tandaiSemuaNotifikasiDibaca() {
+    _notifikasi = [
+      for (final n in _notifikasi) n.copyWith(belumDibaca: false),
+    ];
+  }
+
+  static void tandaiNotifikasiDibaca(String id) {
+    _notifikasi = [
+      for (final n in _notifikasi) n.id == id ? n.copyWith(belumDibaca: false) : n,
+    ];
+  }
+
+  // ---------------- Simpanan (bookmark) ----------------
+  static bool sirkelDisimpan(String id) => _sirkelDisimpan.contains(id);
+
+  static void toggleSimpanSirkel(String id) {
+    // Set.remove mengembalikan false bila id belum ada, jadi saat itu id ditambahkan.
+    if (!_sirkelDisimpan.remove(id)) _sirkelDisimpan.add(id);
+  }
+
+  static bool materiDisimpan(String id) => _materiDisimpan.contains(id);
+
+  static void toggleSimpanMateri(String id) {
+    if (!_materiDisimpan.remove(id)) _materiDisimpan.add(id);
+  }
+
+  // ---------------- Test ----------------
+  /// Mengembalikan semua data ke kondisi awal. Data disimpan statis, jadi tanpa ini
+  /// perubahan di satu test (misalnya gabung) ikut terbawa ke test berikutnya.
+  @visibleForTesting
+  static void resetUntukTes() {
+    _aktif = _nadiaAwal;
+    _sirkel = List.of(_sirkelAwal);
+    _diikuti = List.of(_diikutiAwal);
+    _notifikasi = List.of(_notifikasiAwal);
+    _sirkelDisimpan = {};
+    _materiDisimpan = {};
+    _nomorBerikut = 7;
   }
 }
