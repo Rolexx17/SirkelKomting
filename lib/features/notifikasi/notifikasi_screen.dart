@@ -10,9 +10,12 @@ import '../../shared/widgets/user_avatar.dart';
 import 'notifikasi_strings.dart';
 
 /// Layar Notifikasi: daftar kabar per grup ("Hari ini", "Minggu ini")
-/// dengan status belum dibaca dan tombol "Tandai dibaca".
+/// dengan status belum dibaca yang disimpan di DummyData.
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
+
+  /// Hasil `Navigator.pop` saat notifikasi lencana diketuk; Beranda lalu membuka tab Profil.
+  static const hasilBukaProfil = 'profil';
 
   /// Memecah teks di tanda `**`: potongan berindeks ganjil (yang diapit `**`)
   /// diberi [gayaTebal], sisanya memakai gaya induk TextSpan.
@@ -31,99 +34,104 @@ class NotifikasiScreen extends StatefulWidget {
 }
 
 class _NotifikasiScreenState extends State<NotifikasiScreen> {
-  // Salinan lokal: status dibaca hanya disimpan di state layar ini (tanpa server).
-  List<Notifikasi> _daftar = List.of(DummyData.notifikasi);
-
   static const _ukuranGambar = AppSizes.avatarM;
   static const _radiusSampul = 12.0;
   static const _radiusLencana = 14.0;
   static const _ukuranTitik = 8.0;
 
-  bool get _adaBelumDibaca => _daftar.any((n) => n.belumDibaca);
-
   void _tandaiSemuaDibaca() {
-    setState(() {
-      _daftar = [for (final n in _daftar) n.copyWith(belumDibaca: false)];
-    });
+    // Status disimpan di DummyData (bukan salinan lokal), sehingga Badge lonceng
+    // di Beranda ikut hilang setelah kembali.
+    setState(() => DummyData.tandaiSemuaNotifikasiDibaca());
   }
 
-  void _buka(String sirkelId) {
-    Navigator.of(context).pushNamed(AppRoutes.detailSirkel, arguments: sirkelId);
+  void _ketuk(Notifikasi n) {
+    setState(() => DummyData.tandaiNotifikasiDibaca(n.id));
+
+    final sirkelId = n.sirkelId;
+    if (sirkelId != null) {
+      Navigator.of(context).pushNamed(AppRoutes.detailSirkel, arguments: sirkelId);
+    } else if (n.jenis == JenisNotifikasi.lencana) {
+      // Lencana tidak punya halaman sendiri: tutup Notifikasi dan minta Beranda membuka Profil.
+      Navigator.of(context).pop(NotifikasiScreen.hasilBukaProfil);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final daftar = DummyData.notifikasi;
+    final adaBelumDibaca = DummyData.adaNotifikasiBaru;
 
     // Urutan grup mengikuti urutan kemunculan di data ("Hari ini" lalu "Minggu ini").
     final grup = <String>[];
-    for (final n in _daftar) {
+    for (final n in daftar) {
       if (!grup.contains(n.grup)) grup.add(n.grup);
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(NotifikasiStrings.judul),
-        actions: [
-          TextButton(
-            // Nonaktif bila semua sudah dibaca.
-            onPressed: _adaBelumDibaca ? _tandaiSemuaDibaca : null,
-            child: const Text(NotifikasiStrings.tandaiDibaca),
-          ),
-          const SizedBox(width: AppSizes.s),
-        ],
-      ),
-      body: _daftar.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.all(AppSizes.pagePadding),
-              child: EmptyState(
-                title: NotifikasiStrings.kosongJudul,
-                message: NotifikasiStrings.kosongPesan,
-              ),
-            )
-          : Align(
-              alignment: Alignment.topCenter,
-              // P7: di layar lebar daftar dibatasi 560 px dan ditengahkan.
-              child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(maxWidth: AppSizes.maxContentWidth),
-                // P6: ListView vertikal berisi judul grup dan item notifikasi.
-                child: ListView(
-                  padding: const EdgeInsets.only(bottom: AppSizes.pagePadding),
-                  children: [
-                    for (final g in grup) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSizes.pagePadding,
-                          AppSizes.m,
-                          AppSizes.pagePadding,
-                          AppSizes.s,
-                        ),
-                        child: Text(
-                          g,
-                          style: text.titleSmall
-                              ?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                      ),
-                      for (final n in _daftar.where((x) => x.grup == g))
-                        _item(context, n),
-                    ],
-                  ],
+    // P7: seluruh Scaffold (termasuk AppBar) dibatasi 560 px dan ditengahkan di atas
+    // latar surface, sehingga judul & "Tandai dibaca" sejajar dengan isi di layar lebar.
+    return ColoredBox(
+      color: scheme.surface,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSizes.maxContentWidth),
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text(NotifikasiStrings.judul),
+              actions: [
+                TextButton(
+                  // Nonaktif bila semua sudah dibaca.
+                  onPressed: adaBelumDibaca ? _tandaiSemuaDibaca : null,
+                  child: const Text(NotifikasiStrings.tandaiDibaca),
                 ),
-              ),
+                const SizedBox(width: AppSizes.s),
+              ],
             ),
+            body: daftar.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(AppSizes.pagePadding),
+                    child: EmptyState(
+                      title: NotifikasiStrings.kosongJudul,
+                      message: NotifikasiStrings.kosongPesan,
+                    ),
+                  )
+                // P6: ListView vertikal berisi judul grup dan item notifikasi.
+                : ListView(
+                    padding: const EdgeInsets.only(bottom: AppSizes.pagePadding),
+                    children: [
+                      for (final g in grup) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSizes.pagePadding,
+                            AppSizes.m,
+                            AppSizes.pagePadding,
+                            AppSizes.s,
+                          ),
+                          child: Text(
+                            g,
+                            style: text.titleSmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ),
+                        for (final n in daftar.where((x) => x.grup == g))
+                          _item(context, n),
+                      ],
+                    ],
+                  ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _item(BuildContext context, Notifikasi n) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final sirkelId = n.sirkelId;
 
     final isi = InkWell(
-      // Notifikasi tanpa sirkel (misalnya lencana) tidak bisa diketuk.
-      onTap: sirkelId == null ? null : () => _buka(sirkelId),
+      onTap: () => _ketuk(n),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.pagePadding,

@@ -1,11 +1,13 @@
-// Fungsi bantu tanggal untuk jadwal sesi (Sirkel Saya dan kartu Hari ini di Beranda).
+// Fungsi bantu tanggal untuk jadwal sesi (Sirkel Saya dan Beranda).
 // Ditulis sendiri tanpa paket tambahan sesuai aturan brief.
+
+import 'dart:math' as math;
 
 import '../../data/models/sesi.dart';
 import 'sirkel_saya_strings.dart';
 
 /// Sesi terdekat: sesi pertama yang belum lewat dari [sekarang]. Bila semua sudah
-/// lewat (data contoh memakai Oktober 2025), dipakai sesi paling awal.
+/// lewat, dipakai sesi paling awal.
 Sesi? sesiTerdekat(List<Sesi> daftar, DateTime sekarang) {
   if (daftar.isEmpty) return null;
   final urut = [...daftar]..sort((a, b) => a.waktu.compareTo(b.waktu));
@@ -21,6 +23,12 @@ DateTime awalHari(DateTime t) => DateTime(t.year, t.month, t.day);
 bool hariSama(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
+/// Selisih hari kalender dari [dari] ke [ke], jam diabaikan (0 = hari yang sama,
+/// 1 = besok). Dihitung di UTC agar pergantian jam musim panas tidak membuatnya meleset.
+int selisihHari(DateTime dari, DateTime ke) => DateTime.utc(ke.year, ke.month, ke.day)
+    .difference(DateTime.utc(dari.year, dari.month, dari.day))
+    .inDays;
+
 /// Senin pada minggu yang memuat [t]. `weekday` bernilai Senin = 1 … Minggu = 7,
 /// jadi mundur (weekday - 1) hari. DateTime otomatis menyesuaikan pergantian bulan.
 DateTime seninDari(DateTime t) =>
@@ -35,19 +43,45 @@ List<DateTime> mingguDari(DateTime t) {
   );
 }
 
+/// Banyak minggu (dimulai Senin) yang tersentuh rentang [sekarang] sampai
+/// [sekarang] + [rentangHari]. Contoh: rentang 14 hari dari hari Rabu menyentuh 3 minggu.
+int jumlahMinggu(DateTime sekarang, int rentangHari) {
+  final akhir = DateTime(sekarang.year, sekarang.month, sekarang.day + rentangHari);
+  return selisihHari(seninDari(sekarang), seninDari(akhir)) ~/ 7 + 1;
+}
+
+/// "Kamis".
+String namaHariDari(DateTime t) => SirkelSayaStrings.namaHari[t.weekday - 1];
+
 /// "Kamis, 9 Oktober".
 String tanggalPanjang(DateTime t) => SirkelSayaStrings.tanggal(
-      SirkelSayaStrings.namaHari[t.weekday - 1],
+      namaHariDari(t),
       t.day,
       SirkelSayaStrings.namaBulan[t.month - 1],
+    );
+
+/// "5 Nov".
+String tanggalSingkat(DateTime t) => SirkelSayaStrings.tanggalBulan(
+      t.day,
+      SirkelSayaStrings.namaBulanSingkat[t.month - 1],
     );
 
 /// "19.00" (format jam Indonesia memakai titik).
 String jamDari(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}.${t.minute.toString().padLeft(2, '0')}';
 
-/// Nama hari lengkap ("Kamis") menjadi nomor weekday (4); null bila tidak dikenal.
-int? nomorHariDariNama(String hari) {
-  final i = SirkelSayaStrings.namaHari.indexOf(hari.trim());
-  return i == -1 ? null : i + 1;
+/// Keterangan kapan sesi dimulai, dihitung dari selisih [waktu] dan [sekarang]:
+/// < 60 menit → "Mulai dalam N menit"; < 24 jam → "Mulai dalam N jam";
+/// besok → "Besok, 19.00"; selebihnya → "Kamis, 19.00".
+String teksMulai(DateTime waktu, DateTime sekarang) {
+  final selisih = waktu.difference(sekarang);
+  if (selisih.inMinutes < 60) {
+    // Minimal 1 agar tidak tertulis "Mulai dalam 0 menit".
+    return SirkelSayaStrings.mulaiMenit(math.max(1, selisih.inMinutes));
+  }
+  if (selisih.inHours < 24) return SirkelSayaStrings.mulaiJam(selisih.inHours);
+
+  final jam = jamDari(waktu);
+  if (selisihHari(sekarang, waktu) == 1) return SirkelSayaStrings.besokJam(jam);
+  return SirkelSayaStrings.hariJam(namaHariDari(waktu), jam);
 }
