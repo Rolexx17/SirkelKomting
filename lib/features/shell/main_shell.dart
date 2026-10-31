@@ -39,9 +39,12 @@ class MainShellState extends State<MainShell> {
   // dibuat ulang, saat layout berganti antara NavigationBar dan NavigationRail.
   final _kunciIsi = GlobalKey();
 
-  // Dinaikkan setelah kembali dari Buat Sirkel lewat FAB di rail. Key Jelajah
-  // ikut berubah sehingga Jelajah dibuat ulang dan sirkel baru langsung tampil.
+  // Setiap kali nilainya naik, key Jelajah berubah sehingga JelajahScreen dibuat
+  // ulang: dipakai bukaJelajah (kata kunci baru) dan setelah Buat Sirkel lewat rail.
   int _versiJelajah = 0;
+
+  /// Kata kunci awal SearchBar Jelajah saat Jelajah dibuat ulang.
+  String _kataKunciJelajah = '';
 
   static const _ikon = [Icons.home, Icons.search, Icons.menu_book, Icons.person];
   static const _label = [
@@ -64,9 +67,20 @@ class MainShellState extends State<MainShell> {
     setState(() => _index = index);
   }
 
+  /// Pindah ke tab Jelajah dengan SearchBar berisi [kataKunci], misalnya saat
+  /// mata kuliah di carousel Beranda diketuk. Jelajah dibuat ulang agar kata kunci terpakai.
+  void bukaJelajah({String kataKunci = ''}) {
+    setState(() {
+      _kataKunciJelajah = kataKunci;
+      _versiJelajah++;
+      _index = MainShell.tabJelajah;
+    });
+  }
+
   Future<void> _bukaBuatSirkel() async {
     await Navigator.of(context).pushNamed(AppRoutes.buatSirkel);
-    if (mounted) setState(() => _versiJelajah++);
+    // Kata kunci dikosongkan supaya sirkel yang baru dibuat pasti terlihat.
+    if (mounted) bukaJelajah();
   }
 
   @override
@@ -80,7 +94,7 @@ class MainShellState extends State<MainShell> {
         const BerandaScreen(),
         KeyedSubtree(
           key: ValueKey(_versiJelajah),
-          child: const JelajahScreen(),
+          child: JelajahScreen(kataKunciAwal: _kataKunciJelajah),
         ),
         const RuangMateriScreen(),
         const ProfilScreen(),

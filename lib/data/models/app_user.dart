@@ -21,4 +21,18 @@ class AppUser {
 
   /// Hanya mentor yang punya rating, karena itu nullable.
   final double? rating;
+
+  /// Salinan dengan nama, prodi, atau peran baru (dipakai Daftar dan Ubah profil).
+  /// Id, angkatan, avatar, dan rating tetap sama.
+  AppUser copyWith({String? nama, String? prodi, bool? isMentor}) {
+    return AppUser(
+      id: id,
+      nama: nama ?? this.nama,
+      prodi: prodi ?? this.prodi,
+      angkatan: angkatan,
+      avatar: avatar,
+      isMentor: isMentor ?? this.isMentor,
+      rating: rating,
+    );
+  }
 }

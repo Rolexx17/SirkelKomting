@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_sizes.dart';
+import '../../data/dummy/dummy_data.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/app_text_field.dart';
 import 'auth_strings.dart';
@@ -53,6 +54,14 @@ class _DaftarScreenState extends State<DaftarScreen> {
     });
     if (!formValid || _prodi == null) return;
 
+    // Data pendaftaran disimpan sebagai pengguna aktif, sehingga Beranda dan Profil
+    // langsung menampilkan nama, prodi, dan peran yang baru.
+    DummyData.ubahProfil(
+      nama: _namaController.text.trim(),
+      prodi: _prodi!,
+      mentor: _peran == _Peran.mentor,
+    );
+
     // Messenger diambil sebelum pindah halaman; SnackBar tetap tampil di MainShell.
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pushNamedAndRemoveUntil(
@@ -70,121 +79,123 @@ class _DaftarScreenState extends State<DaftarScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: AuthStrings.kembali,
-          onPressed: () => Navigator.of(context).maybePop(),
+      body: AuthFormLayout(
+        isi: Form(
+          key: _formKey,
+          autovalidateMode: _modeValidasi,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Tombol kembali ada di dalam form (bukan AppBar) supaya ikut
+              // berada di panel kanan saat tampilan dua panel di layar lebar.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: AuthStrings.kembali,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+              ),
+              const SizedBox(height: AppSizes.s),
+              Text(AuthStrings.daftarJudul, style: text.headlineSmall),
+              const SizedBox(height: AppSizes.s),
+              Text(
+                AuthStrings.daftarSubjudul,
+                style: text.bodyLarge?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSizes.xl),
+              AppTextField(
+                label: AuthStrings.labelNama,
+                icon: Icons.person,
+                controller: _namaController,
+                keyboardType: TextInputType.name,
+                validator: AuthValidator.nama,
+              ),
+              const SizedBox(height: AppSizes.m),
+              AppTextField(
+                label: AuthStrings.labelEmail,
+                icon: Icons.mail_outline,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                validator: AuthValidator.email,
+              ),
+              const SizedBox(height: AppSizes.m),
+              DropdownMenu<String>(
+                expandedInsets: EdgeInsets.zero,
+                requestFocusOnTap: false,
+                label: const Text(AuthStrings.labelProdi),
+                leadingIcon: const Icon(Icons.school),
+                initialSelection: _prodi,
+                errorText: _prodiError,
+                onSelected: _pilihProdi,
+                dropdownMenuEntries: [
+                  for (final prodi in AuthStrings.daftarProdi)
+                    DropdownMenuEntry(value: prodi, label: prodi),
+                ],
+              ),
+              const SizedBox(height: AppSizes.m),
+              AppTextField(
+                label: AuthStrings.labelSandi,
+                icon: Icons.lock_outline,
+                controller: _sandiController,
+                obscure: true,
+                validator: AuthValidator.kataSandi,
+              ),
+              const SizedBox(height: AppSizes.l),
+              Text(
+                AuthStrings.daftarSebagai,
+                style: text.titleSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSizes.s),
+              // Lebar penuh: Column stretch memberi lebar tetap, segmen dibagi rata.
+              SegmentedButton<_Peran>(
+                segments: const [
+                  ButtonSegment(
+                    value: _Peran.peserta,
+                    label: Text(AuthStrings.peserta),
+                  ),
+                  ButtonSegment(
+                    value: _Peran.mentor,
+                    label: Text(AuthStrings.mentor),
+                  ),
+                ],
+                selected: {_peran},
+                onSelectionChanged: (pilihan) =>
+                    setState(() => _peran = pilihan.first),
+              ),
+              const SizedBox(height: AppSizes.s),
+              InkWell(
+                onTap: () => setState(() => _setuju = !_setuju),
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(AppSizes.radiusS),
+                ),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _setuju,
+                      onChanged: (nilai) =>
+                          setState(() => _setuju = nilai ?? false),
+                    ),
+                    Expanded(
+                      child: Text(
+                        AuthStrings.setuju,
+                        style: text.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: AuthFormLayout(
-          isi: Form(
-            key: _formKey,
-            autovalidateMode: _modeValidasi,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(AuthStrings.daftarJudul, style: text.headlineSmall),
-                const SizedBox(height: AppSizes.s),
-                Text(
-                  AuthStrings.daftarSubjudul,
-                  style: text.bodyLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.xl),
-                AppTextField(
-                  label: AuthStrings.labelNama,
-                  icon: Icons.person,
-                  controller: _namaController,
-                  keyboardType: TextInputType.name,
-                  validator: AuthValidator.nama,
-                ),
-                const SizedBox(height: AppSizes.m),
-                AppTextField(
-                  label: AuthStrings.labelEmail,
-                  icon: Icons.mail_outline,
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: AuthValidator.email,
-                ),
-                const SizedBox(height: AppSizes.m),
-                DropdownMenu<String>(
-                  expandedInsets: EdgeInsets.zero,
-                  requestFocusOnTap: false,
-                  label: const Text(AuthStrings.labelProdi),
-                  leadingIcon: const Icon(Icons.school),
-                  initialSelection: _prodi,
-                  errorText: _prodiError,
-                  onSelected: _pilihProdi,
-                  dropdownMenuEntries: [
-                    for (final prodi in AuthStrings.daftarProdi)
-                      DropdownMenuEntry(value: prodi, label: prodi),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.m),
-                AppTextField(
-                  label: AuthStrings.labelSandi,
-                  icon: Icons.lock_outline,
-                  controller: _sandiController,
-                  obscure: true,
-                  validator: AuthValidator.kataSandi,
-                ),
-                const SizedBox(height: AppSizes.l),
-                Text(
-                  AuthStrings.daftarSebagai,
-                  style: text.titleSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.s),
-                // Lebar penuh: Column stretch memberi lebar tetap, segmen dibagi rata.
-                SegmentedButton<_Peran>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _Peran.peserta,
-                      label: Text(AuthStrings.peserta),
-                    ),
-                    ButtonSegment(
-                      value: _Peran.mentor,
-                      label: Text(AuthStrings.mentor),
-                    ),
-                  ],
-                  selected: {_peran},
-                  onSelectionChanged: (pilihan) =>
-                      setState(() => _peran = pilihan.first),
-                ),
-                const SizedBox(height: AppSizes.s),
-                InkWell(
-                  onTap: () => setState(() => _setuju = !_setuju),
-                  borderRadius: const BorderRadius.all(
-                    Radius.circular(AppSizes.radiusS),
-                  ),
-                  child: Row(
-                    children: [
-                      Checkbox(
-                        value: _setuju,
-                        onChanged: (nilai) =>
-                            setState(() => _setuju = nilai ?? false),
-                      ),
-                      Expanded(
-                        child: Text(
-                          AuthStrings.setuju,
-                          style: text.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // onPressed null = tombol nonaktif sampai checkbox persetujuan dicentang.
-          bawah: FilledButton(
-            onPressed: _setuju ? _buatAkun : null,
-            child: const Text(AuthStrings.buatAkun),
-          ),
+        // onPressed null = tombol nonaktif sampai checkbox persetujuan dicentang.
+        bawah: FilledButton(
+          onPressed: _setuju ? _buatAkun : null,
+          child: const Text(AuthStrings.buatAkun),
         ),
       ),
     );

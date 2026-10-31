@@ -1,4 +1,4 @@
-/// Teks statis Ruang Materi, Detail Materi, dan MateriCard.
+/// Teks statis Ruang Materi, Detail Materi, Pembaca Materi, dan MateriCard.
 class MateriStrings {
   MateriStrings._();
 
@@ -15,12 +15,24 @@ class MateriStrings {
 
   // Detail Materi
   static const simpan = 'Simpan';
+  static const tersimpan = 'Tersimpan';
+  static const tooltipSimpan = 'Simpan materi';
+  static const tooltipBatalSimpan = 'Hapus dari simpanan';
+  static const disimpan = 'Materi disimpan';
+  static const dihapusDariSimpanan = 'Materi dihapus dari simpanan';
   static const bukaMateri = 'Buka materi';
-  static const disimpan = 'Materi disimpan ke daftar simpanan.';
   static const isiMateri = 'Isi materi';
   static String infoPengunggah(bool isMentor, String waktu) =>
       '${isMentor ? 'Mentor' : 'Peserta'} · dibagikan $waktu';
   static const tidakDitemukan = 'Materi tidak ditemukan';
   static const tidakDitemukanPesan =
       'Materi ini mungkin sudah dihapus. Silakan kembali dan pilih materi lain.';
+
+  // Pembaca Materi
+  static String indikatorHalaman(int ke, int total) => 'Halaman $ke dari $total';
+  static String judulHalaman(int ke) => 'Halaman $ke';
+  static String labelThumbnail(int ke) => '$ke';
+  static const sebelumnya = 'Sebelumnya';
+  static const berikutnya = 'Berikutnya';
+  static const selesai = 'Selesai';
 }

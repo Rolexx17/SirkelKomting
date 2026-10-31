@@ -14,7 +14,9 @@ class SirkelStrings {
   // Detail Sirkel
   static const kembali = 'Kembali';
   static const simpan = 'Simpan';
-  static const disimpan = 'Sirkel disimpan ke daftar simpanan.';
+  static const hapusSimpanan = 'Hapus dari simpanan';
+  static const disimpan = 'Sirkel disimpan.';
+  static const dihapusDariSimpanan = 'Sirkel dihapus dari simpanan.';
   static String mentorProdi(String prodi, String angkatan) =>
       'Mentor · $prodi $angkatan';
   static const tentang = 'Tentang sirkel';
@@ -23,15 +25,25 @@ class SirkelStrings {
   static String jadwalLengkap(String hari, String mulai, String selesai) =>
       'Setiap $hari, $mulai–$selesai';
   static const tautanSetelahGabung = 'Tautan muncul setelah kamu bergabung';
-  static const tautanSudahAda = 'Tautan ada di Sirkel saya';
+  static const tautanDariMentor = 'Tautan dibagikan mentor sebelum sesi dimulai';
+  static const tautanUntukMentor = 'Bagikan tautan ke anggota sebelum sesi dimulai';
   static String anggota(int jumlah, int kuota) => 'Anggota ($jumlah/$kuota)';
   static const lihat = 'Lihat';
-  static const lihatAnggota = 'Daftar lengkap anggota segera hadir.';
+
+  // Sheet daftar anggota
+  static const labelMentor = 'Mentor';
+  static String prodiAngkatan(String prodi, String angkatan) =>
+      '$prodi · $angkatan';
+  static const belumAdaAnggota = 'Belum ada anggota';
+  static const belumAdaAnggotaPesan =
+      'Anggota yang bergabung akan muncul di sini.';
+
   static const kuota = 'Kuota';
   static String kursiTersisa(int n) => '$n kursi tersisa';
   static const kursiPenuh = 'Kursi penuh';
   static const gabung = 'Gabung sirkel';
   static const sudahGabung = 'Sudah bergabung';
+  static const kamuMentor = 'Kamu mentor sirkel ini';
   static const tidakDitemukan = 'Sirkel tidak ditemukan.';
   static const tidakDitemukanPesan =
       'Sirkel ini mungkin sudah dihapus. Silakan kembali dan pilih sirkel lain.';
@@ -40,7 +52,7 @@ class SirkelStrings {
   static const gabungJudul = 'Kamu resmi gabung!';
   static const sesiPertama = 'Sesi pertama ';
   static String infoOnline(String lokasi) =>
-      '. Tautan $lokasi sudah ada di Sirkel saya.';
+      '. Tautan $lokasi dibagikan mentor sebelum sesi, jadwalnya sudah ada di Sirkel saya.';
   static String infoOffline(String lokasi) =>
       '. Lokasinya di $lokasi, jadwalnya sudah ada di Sirkel saya.';
   static const nanti = 'Nanti';

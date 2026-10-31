@@ -16,8 +16,9 @@ import 'jelajah_strings.dart';
 ///
 /// - [kataKunci]: dicocokkan ke mata kuliah atau judul, tidak peka huruf besar/kecil.
 /// - [filter]: pilihan dari chip mode dan bottom sheet Filter.
-/// - [mingguIni]: hanya sirkel yang harinya belum lewat pada minggu berjalan
-///   (hari sesi ≥ [hariIni]); [hariIni] bisa diisi tanggal tetap saat pengujian.
+/// - [mingguIni]: hanya sirkel yang punya hari sesi dari hari ini sampai Minggu
+///   (memakai semua hari di `daftarNomorHari`), diurutkan dari sesi terdekat.
+///   [hariIni] bisa diisi tanggal tetap saat pengujian.
 List<Sirkel> saringSirkel(
   List<Sirkel> sumber, {
   String kataKunci = '',
@@ -28,23 +29,53 @@ List<Sirkel> saringSirkel(
   final kunci = kataKunci.trim().toLowerCase();
   final nomorHariIni = (hariIni ?? DateTime.now()).weekday;
 
-  return sumber.where((s) {
+  final hasil = sumber.where((s) {
     if (kunci.isNotEmpty &&
         !s.mataKuliah.toLowerCase().contains(kunci) &&
         !s.judul.toLowerCase().contains(kunci)) {
       return false;
     }
-    if (mingguIni) {
-      final n = nomorHari(s.hari);
-      if (n == null || n < nomorHariIni) return false;
+    if (mingguIni && !s.daftarNomorHari.any((n) => n >= nomorHariIni)) {
+      return false;
     }
     return filter.cocok(s);
   }).toList();
+
+  if (!mingguIni) return hasil;
+
+  // Urutkan dari sesi terdekat. Indeks asal dipakai sebagai penentu terakhir
+  // supaya sirkel dengan jarak sama selalu tampil dengan urutan yang sama.
+  final urut = [
+    for (var i = 0; i < hasil.length; i++)
+      (sirkel: hasil[i], jarak: _menitMenujuSesi(hasil[i], nomorHariIni), asal: i),
+  ]..sort((a, b) => a.jarak != b.jarak
+      ? a.jarak.compareTo(b.jarak)
+      : a.asal.compareTo(b.asal));
+  return [for (final u in urut) u.sirkel];
+}
+
+/// Jarak (menit) dari awal hari ini ke sesi terdekat [s] di minggu ini:
+/// selisih hari × 1440 + jam mulai. Makin kecil, makin dekat.
+int _menitMenujuSesi(Sirkel s, int nomorHariIni) {
+  var selisihHari = DateTime.daysPerWeek;
+  for (final n in s.daftarNomorHari) {
+    if (n >= nomorHariIni && n - nomorHariIni < selisihHari) {
+      selisihHari = n - nomorHariIni;
+    }
+  }
+  return selisihHari * Duration.minutesPerDay + (bacaJam(s.jam) ?? 0);
 }
 
 /// Tab Jelajah: pencarian, chip filter cepat, filter lengkap, dan daftar/grid sirkel.
 class JelajahScreen extends StatefulWidget {
-  const JelajahScreen({super.key});
+  const JelajahScreen({super.key, this.kataKunciAwal = '', this.hariIni});
+
+  /// Isi awal SearchBar, misalnya saat mata kuliah di Beranda diketuk
+  /// (`MainShellState.bukaJelajah`).
+  final String kataKunciAwal;
+
+  /// Tanggal acuan chip "Minggu ini". null = hari ini; diisi tanggal tetap saat test.
+  final DateTime? hariIni;
 
   @override
   State<JelajahScreen> createState() => _JelajahScreenState();
@@ -54,6 +85,12 @@ class _JelajahScreenState extends State<JelajahScreen> {
   final _cari = TextEditingController();
   FilterSirkel _filter = const FilterSirkel();
   bool _mingguIni = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cari.text = widget.kataKunciAwal;
+  }
 
   @override
   void dispose() {
@@ -67,6 +104,7 @@ class _JelajahScreenState extends State<JelajahScreen> {
         DummyData.semuaSirkel,
         kataKunci: _cari.text,
         mingguIni: _mingguIni,
+        hariIni: widget.hariIni,
       );
 
   Future<void> _bukaFilter() async {
@@ -101,7 +139,17 @@ class _JelajahScreenState extends State<JelajahScreen> {
       kataKunci: _cari.text,
       filter: _filter,
       mingguIni: _mingguIni,
+      hariIni: widget.hariIni,
     );
+
+    // Bila chip "Minggu ini" sendiri sudah membuat hasil kosong (misalnya hari
+    // Minggu), tampilkan pesan khusus, bukan pesan pencarian biasa.
+    final kosongKarenaMingguIni = _mingguIni &&
+        saringSirkel(
+          DummyData.semuaSirkel,
+          mingguIni: true,
+          hariIni: widget.hariIni,
+        ).isEmpty;
 
     // P7: jumlah kolom grid 1 (< 600), 2 (600–839), 3 (≥ 840).
     final kolom = Responsive.columns(context, compact: 1, medium: 2, expanded: 3);
@@ -141,13 +189,18 @@ class _JelajahScreenState extends State<JelajahScreen> {
             SliverToBoxAdapter(child: _buildChips()),
             const SliverToBoxAdapter(child: SizedBox(height: AppSizes.m)),
             if (hasil.isEmpty)
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.all(AppSizes.pagePadding),
-                  child: EmptyState(
-                    title: JelajahStrings.kosongJudul,
-                    message: JelajahStrings.kosongPesan,
-                  ),
+                  padding: const EdgeInsets.all(AppSizes.pagePadding),
+                  child: kosongKarenaMingguIni
+                      ? const EmptyState(
+                          title: JelajahStrings.kosongMingguIniJudul,
+                          message: JelajahStrings.kosongMingguIniPesan,
+                        )
+                      : const EmptyState(
+                          title: JelajahStrings.kosongJudul,
+                          message: JelajahStrings.kosongPesan,
+                        ),
                 ),
               )
             else

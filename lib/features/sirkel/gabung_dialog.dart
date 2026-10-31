@@ -16,29 +16,32 @@ Future<void> showGabungDialog(BuildContext context, Sirkel sirkel) {
   );
 }
 
-/// Waktu sesi pertama: diambil dari `DummyData.jadwalSesi` bila ada; jika tidak,
-/// dihitung hari [Sirkel.hari] terdekat mulai hari ini pada jam [Sirkel.jam].
+/// Waktu sesi pertama: diambil dari `DummyData.jadwalSesi` (sudah relatif ke
+/// waktu sekarang dan terurut). Cadangan bila tidak ada: hari sesi terdekat dari
+/// `daftarNomorHari` mulai sekarang pada jam [Sirkel.jam].
 DateTime _sesiPertama(Sirkel sirkel) {
-  final jadwal = DummyData.jadwalSesi
-      .where((sesi) => sesi.sirkelId == sirkel.id)
-      .map((sesi) => sesi.waktu)
-      .toList()
-    ..sort();
-  if (jadwal.isNotEmpty) return jadwal.first;
+  for (final sesi in DummyData.jadwalSesi) {
+    if (sesi.sirkelId == sirkel.id) return sesi.waktu;
+  }
 
   final sekarang = DateTime.now();
-  final targetHari = nomorHari(sirkel.hari) ?? sekarang.weekday;
-  final selisihHari = (targetHari - sekarang.weekday + 7) % 7;
   final menit = bacaJam(sirkel.jam) ?? 0;
-  final sesi = DateTime(
-    sekarang.year,
-    sekarang.month,
-    sekarang.day + selisihHari,
-    menit ~/ 60,
-    menit % 60,
-  );
-  // Bila sesi hari ini sudah lewat jamnya, pakai minggu berikutnya.
-  return sesi.isBefore(sekarang) ? sesi.add(const Duration(days: 7)) : sesi;
+  // Coba hari ini sampai 7 hari ke depan; ambil tanggal pertama yang harinya cocok
+  // dan jamnya belum lewat.
+  for (var i = 0; i <= DateTime.daysPerWeek; i++) {
+    final calon = DateTime(
+      sekarang.year,
+      sekarang.month,
+      sekarang.day + i,
+      menit ~/ 60,
+      menit % 60,
+    );
+    if (sirkel.daftarNomorHari.contains(calon.weekday) &&
+        !calon.isBefore(sekarang)) {
+      return calon;
+    }
+  }
+  return sekarang;
 }
 
 String _formatSesi(DateTime w) => SirkelStrings.waktuSesi(
@@ -58,21 +61,27 @@ class _GabungDialog extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final online = sirkel.mode == ModeBelajar.online;
+    // P7: di landscape tinggi layar ±360 px, jadi ilustrasi disembunyikan
+    // supaya dialog muat tanpa digulir.
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
 
     return Dialog(
-      // Scroll agar isi dialog tidak overflow di landscape ponsel.
+      // Scroll hanya sebagai pengaman bila ukuran huruf diperbesar.
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              AppAssets.onboarding1,
-              width: AppSizes.gabungIlustrasiW,
-              height: AppSizes.gabungIlustrasiH,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: AppSizes.l),
+            if (!landscape) ...[
+              Image.asset(
+                AppAssets.onboarding1,
+                width: AppSizes.gabungIlustrasiW,
+                height: AppSizes.gabungIlustrasiH,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: AppSizes.l),
+            ],
             Text(
               SirkelStrings.gabungJudul,
               textAlign: TextAlign.center,

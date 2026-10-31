@@ -29,6 +29,9 @@ class AppSizes {
   /// Tinggi bagian teks SirkelCard (tanpa sampul), dipakai menghitung tinggi sel grid.
   static const sirkelCardBody = 144.0;
   static const detailHeader = 220.0;
+
+  /// P7: tinggi header Detail saat HP landscape (tinggi layar ±360 px).
+  static const detailHeaderLandscape = 140.0;
   static const sheetMaxWidth = 640.0;
   static const fabSpace = 88.0;
   static const gabungIlustrasiW = 180.0, gabungIlustrasiH = 146.0;

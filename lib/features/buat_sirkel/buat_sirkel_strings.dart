@@ -26,6 +26,7 @@ class BuatSirkelStrings {
   static const jam = 'Jam';
   static const jamWajib = 'Jam wajib diisi';
   static const jamFormat = 'Format HH.MM, misalnya 16.00';
+  static const pilihJam = 'Pilih jam sesi';
 
   static const kuota = 'Kuota';
   static const kurangiKuota = 'Kurangi kuota';

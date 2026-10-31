@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_sizes.dart';
+import '../../../data/models/sesi.dart';
 import '../../../data/models/sirkel.dart';
 import '../../../shared/widgets/avatar_stack.dart';
 import '../../../shared/widgets/cover_image.dart';
+import '../../sirkel_saya/jadwal_util.dart';
 import '../beranda_strings.dart';
 
-/// Kartu "HARI INI" berlatar primary: sesi terdekat, anggota, dan tombol Masuk sesi.
+/// Kartu sesi berikutnya berlatar primary: label hari ("HARI INI", "BESOK",
+/// "KAMIS, 5 NOV"), mata kuliah, jam sesi, anggota, dan tombol Masuk sesi.
 class HariIniCard extends StatelessWidget {
   const HariIniCard({
     super.key,
     required this.sirkel,
+    required this.sesi,
+    required this.label,
     required this.onMasukSesi,
   });
 
   final Sirkel sirkel;
+
+  /// Sesi yang ditampilkan; jamnya diambil dari [Sesi.waktu].
+  final Sesi sesi;
+
+  /// Label hari, dihitung Beranda lewat `BerandaScreen.labelSesi`.
+  final String label;
   final VoidCallback onMasukSesi;
 
   static const _ukuranSampul = 104.0;
@@ -60,7 +71,9 @@ class HariIniCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        BerandaStrings.hariIni,
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: text.labelMedium?.copyWith(color: teksLembut),
                       ),
                       const SizedBox(height: AppSizes.xs),
@@ -88,7 +101,7 @@ class HariIniCard extends StatelessWidget {
                           const SizedBox(width: AppSizes.s),
                           Flexible(
                             child: Text(
-                              BerandaStrings.jamMode(sirkel.jam, mode),
+                              BerandaStrings.jamMode(jamDari(sesi.waktu), mode),
                               style: text.titleSmall
                                   ?.copyWith(color: scheme.onPrimary),
                             ),

@@ -13,7 +13,8 @@ import 'sirkel_saya_strings.dart';
 
 enum _Segmen { jadwal, sirkel }
 
-/// Layar Sirkel Saya: jadwal mingguan sesi dan daftar sirkel yang diikuti.
+/// Layar Sirkel Saya: jadwal sesi per minggu (bisa disaring per tanggal)
+/// dan daftar sirkel yang diikuti.
 class SirkelSayaScreen extends StatefulWidget {
   const SirkelSayaScreen({super.key});
 
@@ -24,7 +25,10 @@ class SirkelSayaScreen extends StatefulWidget {
 class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
   _Segmen _segmen = _Segmen.jadwal;
 
-  /// Hari yang disorot di strip; null = hari sesi terdekat.
+  /// 0 = minggu ini, 1 = minggu depan, dan seterusnya (selama masih ada data jadwal).
+  int _mingguKe = 0;
+
+  /// Tanggal yang dipilih di strip; null = tampilkan semua sesi.
   DateTime? _hariTerpilih;
 
   static const _lebarJam = 44.0;
@@ -41,64 +45,76 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(SirkelSayaStrings.masukSesiInfo(sirkel.mataKuliah))),
+        SnackBar(
+          content: Text(
+            SirkelSayaStrings.masukSesiInfo(sirkel.mataKuliah, sirkel.lokasi),
+          ),
+        ),
       );
+  }
+
+  void _pilihHari(DateTime tgl) {
+    // Mengetuk tanggal yang sama sekali lagi membatalkan saringan.
+    setState(() {
+      final sama = _hariTerpilih != null && hariSama(_hariTerpilih!, tgl);
+      _hariTerpilih = sama ? null : awalHari(tgl);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final sekarang = DateTime.now();
     final diikuti = DummyData.sirkelDiikuti;
+    // Sesi dari semua sirkel yang diikuti, sekarang s.d. 14 hari ke depan (data milik Ethan).
+    final sesi = DummyData.jadwalSesi;
+    final terdekat = sesiTerdekat(sesi, sekarang);
 
-    // Hanya sesi dari sirkel yang diikuti, diurutkan dari yang paling awal.
-    final idDiikuti = diikuti.map((s) => s.id).toSet();
-    final sesi = DummyData.jadwalSesi
-        .where((s) => idDiikuti.contains(s.sirkelId))
-        .toList()
-      ..sort((a, b) => a.waktu.compareTo(b.waktu));
-    final terdekat = sesiTerdekat(sesi, DateTime.now());
-
-    return Scaffold(
-      appBar: AppBar(title: const Text(SirkelSayaStrings.judul)),
-      body: SafeArea(
-        top: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          // P7: di layar lebar konten dibatasi AppSizes.maxContentWidth dan ditengahkan.
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppSizes.maxContentWidth),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSizes.pagePadding,
-                    AppSizes.s,
-                    AppSizes.pagePadding,
-                    AppSizes.m,
+    // P7: seluruh Scaffold (termasuk AppBar) dibatasi 560 px dan ditengahkan di atas
+    // latar surface, sehingga judul AppBar sejajar dengan isi di layar lebar.
+    return ColoredBox(
+      color: scheme.surface,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSizes.maxContentWidth),
+          child: Scaffold(
+            appBar: AppBar(title: const Text(SirkelSayaStrings.judul)),
+            body: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSizes.pagePadding,
+                      AppSizes.s,
+                      AppSizes.pagePadding,
+                      AppSizes.m,
+                    ),
+                    // P4: SegmentedButton Material 3 untuk berpindah dua tampilan.
+                    child: SegmentedButton<_Segmen>(
+                      expandedInsets: EdgeInsets.zero,
+                      segments: [
+                        const ButtonSegment(
+                          value: _Segmen.jadwal,
+                          label: Text(SirkelSayaStrings.jadwal),
+                        ),
+                        ButtonSegment(
+                          value: _Segmen.sirkel,
+                          label: Text(SirkelSayaStrings.sirkel(diikuti.length)),
+                        ),
+                      ],
+                      selected: {_segmen},
+                      onSelectionChanged: (pilihan) =>
+                          setState(() => _segmen = pilihan.first),
+                    ),
                   ),
-                  // P4: SegmentedButton Material 3 untuk berpindah dua tampilan.
-                  child: SegmentedButton<_Segmen>(
-                    expandedInsets: EdgeInsets.zero,
-                    segments: [
-                      const ButtonSegment(
-                        value: _Segmen.jadwal,
-                        label: Text(SirkelSayaStrings.jadwal),
-                      ),
-                      ButtonSegment(
-                        value: _Segmen.sirkel,
-                        label: Text(SirkelSayaStrings.sirkel(diikuti.length)),
-                      ),
-                    ],
-                    selected: {_segmen},
-                    onSelectionChanged: (pilihan) =>
-                        setState(() => _segmen = pilihan.first),
+                  Expanded(
+                    child: _segmen == _Segmen.jadwal
+                        ? _tabJadwal(context, sesi, terdekat, sekarang)
+                        : _tabSirkel(diikuti),
                   ),
-                ),
-                Expanded(
-                  child: _segmen == _Segmen.jadwal
-                      ? _tabJadwal(context, sesi, terdekat, diikuti)
-                      : _tabSirkel(diikuti),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -112,39 +128,22 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
     BuildContext context,
     List<Sesi> sesi,
     Sesi? terdekat,
-    List<Sirkel> diikuti,
+    DateTime sekarang,
   ) {
     final text = Theme.of(context).textTheme;
 
-    // Minggu yang ditampilkan = minggu sesi terdekat (Sen 6 – Min 12 Okt pada data contoh).
-    final acuan = terdekat?.waktu ?? DateTime.now();
-    final terpilih = _hariTerpilih ?? awalHari(acuan);
+    // Data jadwal mencakup 14 hari, jadi minggu yang bisa dibuka dibatasi.
+    final jumlah = jumlahMinggu(sekarang, DummyData.rentangJadwalHari);
+    final mingguKe = _mingguKe.clamp(0, jumlah - 1);
+    final hari = mingguDari(
+      DateTime(sekarang.year, sekarang.month, sekarang.day + 7 * mingguKe),
+    );
 
-    // Titik = hari rutin sirkel yang diikuti (Rabu, Kamis, Sabtu), sehingga
-    // sirkel yang baru digabung ikut menandai harinya.
-    final hariRutin =
-        diikuti.map((s) => nomorHariDariNama(s.hari)).whereType<int>().toSet();
-
-    // Daftar sesi dikelompokkan per tanggal: judul tanggal muncul saat tanggal berganti.
-    final isi = <Widget>[];
-    DateTime? tanggalSebelum;
-    for (final s in sesi) {
-      final sirkel = DummyData.cariSirkel(s.sirkelId);
-      if (sirkel == null) continue;
-      if (tanggalSebelum == null || !hariSama(tanggalSebelum, s.waktu)) {
-        if (isi.isNotEmpty) isi.add(const SizedBox(height: AppSizes.l));
-        isi.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSizes.sm),
-            child: Text(tanggalPanjang(s.waktu), style: text.titleMedium),
-          ),
-        );
-        tanggalSebelum = s.waktu;
-      } else {
-        isi.add(const SizedBox(height: AppSizes.sm));
-      }
-      isi.add(_barisSesi(context, s, sirkel, terdekat: identical(s, terdekat)));
-    }
+    // Saringan tanggal: bila ada tanggal terpilih, hanya sesi tanggal itu yang tampil.
+    final terpilih = _hariTerpilih;
+    final tampil = terpilih == null
+        ? sesi
+        : sesi.where((s) => hariSama(s.waktu, terpilih)).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -154,47 +153,145 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
         AppSizes.pagePadding,
       ),
       children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                SirkelSayaStrings.rentangMinggu(
+                  tanggalSingkat(hari.first),
+                  tanggalSingkat(hari.last),
+                ),
+                style: text.titleSmall,
+              ),
+            ),
+            IconButton(
+              tooltip: SirkelSayaStrings.mingguSebelumnya,
+              onPressed: mingguKe > 0
+                  ? () => setState(() => _mingguKe = mingguKe - 1)
+                  : null,
+              icon: const Icon(Icons.chevron_left),
+            ),
+            IconButton(
+              tooltip: SirkelSayaStrings.mingguBerikutnya,
+              onPressed: mingguKe < jumlah - 1
+                  ? () => setState(() => _mingguKe = mingguKe + 1)
+                  : null,
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.xs),
         // P6: Row berisi 7 sel hari yang lebarnya dibagi rata dengan Expanded.
         Row(
           children: [
-            for (final tgl in mingguDari(acuan))
+            for (final tgl in hari)
               Expanded(
                 child: _selHari(
                   context,
                   tgl,
-                  aktif: hariSama(tgl, terpilih),
-                  bertitik: hariRutin.contains(tgl.weekday),
+                  aktif: terpilih != null && hariSama(tgl, terpilih),
+                  hariIni: hariSama(tgl, sekarang),
+                  // Titik hanya untuk tanggal yang benar-benar punya sesi.
+                  bertitik: sesi.any((s) => hariSama(s.waktu, tgl)),
                 ),
               ),
           ],
         ),
         const SizedBox(height: AppSizes.l),
-        if (isi.isEmpty)
-          const EmptyState(
-            title: SirkelSayaStrings.jadwalKosongJudul,
-            message: SirkelSayaStrings.jadwalKosongPesan,
-          )
+        if (terpilih != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.s),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(tanggalPanjang(terpilih), style: text.titleMedium),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _hariTerpilih = null),
+                  child: const Text(SirkelSayaStrings.tampilkanSemua),
+                ),
+              ],
+            ),
+          ),
+        if (tampil.isEmpty)
+          terpilih != null
+              ? const EmptyState(
+                  title: SirkelSayaStrings.tidakAdaSesiJudul,
+                  message: SirkelSayaStrings.tidakAdaSesiPesan,
+                )
+              : const EmptyState(
+                  title: SirkelSayaStrings.jadwalKosongJudul,
+                  message: SirkelSayaStrings.jadwalKosongPesan,
+                )
         else
-          ...isi,
+          ..._daftarSesi(
+            context,
+            tampil,
+            terdekat,
+            sekarang,
+            // Saat disaring, judul tanggal sudah ada di baris "Tampilkan semua".
+            denganJudulTanggal: terpilih == null,
+          ),
       ],
     );
+  }
+
+  /// Baris-baris sesi; judul tanggal ditambahkan setiap kali tanggal berganti.
+  List<Widget> _daftarSesi(
+    BuildContext context,
+    List<Sesi> daftar,
+    Sesi? terdekat,
+    DateTime sekarang, {
+    required bool denganJudulTanggal,
+  }) {
+    final text = Theme.of(context).textTheme;
+    final isi = <Widget>[];
+    DateTime? tanggalSebelum;
+
+    for (final s in daftar) {
+      final sirkel = DummyData.cariSirkel(s.sirkelId);
+      if (sirkel == null) continue;
+
+      final hariBaru = tanggalSebelum == null || !hariSama(tanggalSebelum, s.waktu);
+      final judulTanggal = hariBaru && denganJudulTanggal;
+      if (isi.isNotEmpty) {
+        isi.add(SizedBox(height: judulTanggal ? AppSizes.l : AppSizes.sm));
+      }
+      if (judulTanggal) {
+        isi.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.sm),
+            child: Text(tanggalPanjang(s.waktu), style: text.titleMedium),
+          ),
+        );
+      }
+      tanggalSebelum = s.waktu;
+      isi.add(
+        _barisSesi(context, s, sirkel, sekarang, terdekat: identical(s, terdekat)),
+      );
+    }
+    return isi;
   }
 
   Widget _selHari(
     BuildContext context,
     DateTime tgl, {
     required bool aktif,
+    required bool hariIni,
     required bool bertitik,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final warnaTeks = aktif ? scheme.onPrimary : scheme.onSurface;
+    // Hari ini diberi warna primary agar mudah ditemukan walau belum dipilih.
+    final warnaAngka = aktif
+        ? scheme.onPrimary
+        : (hariIni ? scheme.primary : scheme.onSurface);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs / 2),
       child: InkWell(
         customBorder: const StadiumBorder(),
-        onTap: () => setState(() => _hariTerpilih = awalHari(tgl)),
+        onTap: () => _pilihHari(tgl),
         // P5: Container berbentuk pil; berwarna primary hanya untuk hari terpilih.
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: AppSizes.sm),
@@ -212,7 +309,7 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                 ),
               ),
               const SizedBox(height: AppSizes.xs),
-              Text('${tgl.day}', style: text.titleLarge?.copyWith(color: warnaTeks)),
+              Text('${tgl.day}', style: text.titleLarge?.copyWith(color: warnaAngka)),
               const SizedBox(height: AppSizes.xs),
               // Titik tetap memakan tempat walau tersembunyi, agar tinggi semua sel sama.
               Visibility(
@@ -239,7 +336,8 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
   Widget _barisSesi(
     BuildContext context,
     Sesi sesi,
-    Sirkel sirkel, {
+    Sirkel sirkel,
+    DateTime sekarang, {
     required bool terdekat,
   }) {
     final scheme = Theme.of(context).colorScheme;
@@ -320,7 +418,7 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                   ),
                 ),
               ),
-              // Baris "Mulai dalam 1 jam" hanya untuk sesi terdekat.
+              // Baris waktu mulai + "Masuk sesi" hanya untuk sesi terdekat.
               if (terdekat) ...[
                 const SizedBox(height: AppSizes.s),
                 Container(
@@ -330,21 +428,27 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                     AppSizes.s,
                     AppSizes.s,
                   ),
+                  // Garis tepi (bukan latar primaryContainer) agar tombol
+                  // primaryContainer di dalamnya tetap terlihat kontras.
                   decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
+                    border: Border.all(color: scheme.outlineVariant),
                     borderRadius: BorderRadius.circular(AppSizes.radiusL),
                   ),
                   child: Row(
                     children: [
                       Expanded(
+                        // Dihitung dari selisih waktu sesi dan sekarang.
                         child: Text(
-                          SirkelSayaStrings.mulaiSatuJam,
-                          style: text.labelLarge
-                              ?.copyWith(color: scheme.onPrimaryContainer),
+                          teksMulai(sesi.waktu, sekarang),
+                          style: text.labelLarge,
                         ),
                       ),
                       const SizedBox(width: AppSizes.s),
                       FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: scheme.primaryContainer,
+                          foregroundColor: scheme.onPrimaryContainer,
+                        ),
                         onPressed: () => _masukSesi(sirkel),
                         icon: const Icon(Icons.videocam),
                         label: const Text(SirkelSayaStrings.masukSesi),

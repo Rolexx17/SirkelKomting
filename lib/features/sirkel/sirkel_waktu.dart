@@ -4,8 +4,9 @@
 /// Lama satu sesi (menit). Data contoh tidak punya jam selesai; mockup memakai 19.00–20.30.
 const durasiSesiMenit = 90;
 
-/// Mengubah nama hari ("Kamis", "Kam") menjadi nomor hari ISO (Senin = 1 … Minggu = 7).
-/// Dicocokkan dari 3 huruf pertama agar "Sen" dan "Senin" dianggap sama.
+/// Mengubah kode hari chip Filter ("Kam") atau satu nama hari ("Kamis") menjadi
+/// nomor hari ISO (Senin = 1 … Minggu = 7). Untuk hari sebuah sirkel (bisa
+/// "Senin & Rabu") pakai `Sirkel.daftarNomorHari` milik model.
 int? nomorHari(String hari) {
   const kode = ['sen', 'sel', 'rab', 'kam', 'jum', 'sab', 'min'];
   final awal = hari.trim().toLowerCase();
