@@ -141,9 +141,9 @@ class _JelajahScreenState extends State<JelajahScreen> {
             SliverToBoxAdapter(child: _buildChips()),
             const SliverToBoxAdapter(child: SizedBox(height: AppSizes.m)),
             if (hasil.isEmpty)
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppSizes.pagePadding),
+                  padding: EdgeInsets.all(AppSizes.pagePadding),
                   child: EmptyState(
                     title: JelajahStrings.kosongJudul,
                     message: JelajahStrings.kosongPesan,
