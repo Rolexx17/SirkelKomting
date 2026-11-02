@@ -70,8 +70,9 @@ String tanggalSingkat(DateTime t) => SirkelSayaStrings.tanggalBulan(
 String jamDari(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}.${t.minute.toString().padLeft(2, '0')}';
 
-/// Lama satu sesi; data contoh tidak punya jam selesai (mockup: 19.00–20.30).
-const durasiSesi = Duration(minutes: 90);
+/// Lama satu sesi. Diambil dari model [Sesi] (milik data) agar hanya ada satu
+/// sumber: jadwal di DummyData dan tampilan di sini selalu memakai angka yang sama.
+const durasiSesi = Sesi.durasi;
 
 /// Pengguna boleh masuk mulai 15 menit sebelum sesi dimulai.
 const batasMasukAwal = Duration(minutes: 15);
@@ -82,9 +83,15 @@ bool bisaMasukSesi(DateTime waktu, DateTime sekarang) =>
     sekarang.isBefore(waktu.add(durasiSesi));
 
 /// Keterangan kapan sesi dimulai, dihitung dari selisih [waktu] dan [sekarang]:
+/// sudah mulai tapi belum selesai → "Sedang berlangsung";
 /// < 60 menit → "Mulai dalam N menit"; < 24 jam → "Mulai dalam N jam";
 /// besok → "Besok, 19.00"; ≥ 2 hari → "Mulai N hari lagi".
 String teksMulai(DateTime waktu, DateTime sekarang) {
+  // Diperiksa paling awal: selisih sesi yang sudah mulai bernilai negatif.
+  if (!sekarang.isBefore(waktu) && sekarang.isBefore(waktu.add(durasiSesi))) {
+    return SirkelSayaStrings.sedangBerlangsung;
+  }
+
   final selisih = waktu.difference(sekarang);
   if (selisih.inMinutes < 60) {
     // Minimal 1 agar tidak tertulis "Mulai dalam 0 menit".

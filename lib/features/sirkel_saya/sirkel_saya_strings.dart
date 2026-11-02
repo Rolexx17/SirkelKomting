@@ -25,6 +25,7 @@ class SirkelSayaStrings {
   static String mulaiJam(int jam) => 'Mulai dalam $jam jam';
   static String besokJam(String jam) => 'Besok, $jam';
   static String mulaiHari(int hari) => 'Mulai $hari hari lagi';
+  static const sedangBerlangsung = 'Sedang berlangsung';
 
   // Tombol sesi: "Masuk sesi" bila sudah waktunya, selain itu "Detail sesi".
   static const masukSesi = 'Masuk sesi';
@@ -43,6 +44,11 @@ class SirkelSayaStrings {
   static String bantuanMasuk(int menit) =>
       'Bisa masuk $menit menit sebelum sesi dimulai';
   static String membuka(String lokasi) => 'Membuka $lokasi… (simulasi)';
+
+  // Sirkel offline: tombol utama sheet membuka lokasi, bukan rapat online.
+  static const lihatLokasi = 'Lihat lokasi';
+  static String membukaPeta(String lokasi) =>
+      'Membuka peta ke $lokasi… (simulasi)';
   static const lihatDetailSirkel = 'Lihat detail sirkel';
 
   static const jadwalKosongJudul = 'Belum ada jadwal';
