@@ -86,6 +86,9 @@ class MateriCard extends StatelessWidget {
                   const SizedBox(height: AppSizes.xs),
                   Text(
                     MateriStrings.formatHalaman(materi.format, materi.halaman),
+                    // Satu baris saja agar tinggi kartu tetap sesuai tinggiIsi.
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: AppSizes.s),

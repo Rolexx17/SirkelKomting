@@ -281,6 +281,22 @@ void main() {
       expect(bisa(60), isTrue);
       expect(bisa(100), isFalse);
     });
+
+    test('teksMulai: 10 menit setelah mulai → "Sedang berlangsung"', () {
+      final mulai = DateTime(2026, 11, 2, 19);
+      expect(
+        teksMulai(mulai, mulai.add(const Duration(minutes: 10))),
+        SirkelSayaStrings.sedangBerlangsung,
+      );
+    });
+
+    test('bisaMasukSesi: 10 menit setelah mulai → true', () {
+      final mulai = DateTime(2026, 11, 2, 19);
+      expect(
+        bisaMasukSesi(mulai, mulai.add(const Duration(minutes: 10))),
+        isTrue,
+      );
+    });
   });
 
   group('Iterasi 3: Sirkel Saya & sheet sesi', () {
@@ -314,11 +330,15 @@ void main() {
       expect(find.text(judulPertama), findsOneWidget);
     });
 
-    /// Memasang tombol yang membuka sheet sesi untuk sirkel s1 (online).
-    Future<void> bukaSheet(WidgetTester tester, Duration jarakKeSesi) async {
+    /// Memasang tombol yang membuka sheet sesi; bawaan sirkel s1 (online).
+    Future<void> bukaSheet(
+      WidgetTester tester,
+      Duration jarakKeSesi, {
+      String sirkelId = 's1',
+    }) async {
       aturUkuran(tester, const Size(360, 800));
-      final sirkel = DummyData.cariSirkel('s1')!;
-      final sesi = Sesi(sirkelId: 's1', waktu: DateTime.now().add(jarakKeSesi));
+      final sirkel = DummyData.cariSirkel(sirkelId)!;
+      final sesi = Sesi(sirkelId: sirkelId, waktu: DateTime.now().add(jarakKeSesi));
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light(),
@@ -379,6 +399,22 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(SirkelSayaStrings.tautanDisalin), findsOneWidget);
+    });
+
+    testWidgets('sheet sirkel offline memakai "Lihat lokasi" dengan ikon place',
+        (tester) async {
+      // s2 (Struktur Data) bertemu offline di Perpustakaan Lt. 2.
+      await bukaSheet(tester, const Duration(minutes: 10), sirkelId: 's2');
+
+      expect(find.text(SirkelSayaStrings.lihatLokasi), findsOneWidget);
+      expect(find.text(SirkelSayaStrings.masukSesi), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byWidgetPredicate((w) => w is FilledButton),
+          matching: find.byIcon(Icons.place),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

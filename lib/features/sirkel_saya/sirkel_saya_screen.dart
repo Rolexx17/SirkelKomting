@@ -367,15 +367,17 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
         ),
         const SizedBox(width: AppSizes.sm),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                child: InkWell(
-                  onTap: () => _bukaSesi(sirkel, sesi),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSizes.sm),
-                    child: Row(
+          // Satu sesi = satu Card. Sesi terdekat mendapat baris aksi di dalam Card
+          // yang sama (dipisah Divider), bukan kotak terpisah, agar gaya seragam.
+          child: Card(
+            child: InkWell(
+              onTap: () => _bukaSesi(sirkel, sesi),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
                       children: [
                         CoverImage(
                           path: sirkel.cover,
@@ -426,54 +428,40 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-              // Baris waktu mulai + tombol sesi hanya untuk sesi terdekat.
-              // Label "Masuk sesi" bila sudah ≤ 15 menit lagi, selain itu "Detail sesi".
-              if (terdekat) ...[
-                const SizedBox(height: AppSizes.s),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSizes.m,
-                    AppSizes.s,
-                    AppSizes.s,
-                    AppSizes.s,
-                  ),
-                  // Garis tepi (bukan latar primaryContainer) agar tombol
-                  // primaryContainer di dalamnya tetap terlihat kontras.
-                  decoration: BoxDecoration(
-                    border: Border.all(color: scheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusL),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        // Dihitung dari selisih waktu sesi dan sekarang.
-                        child: Text(
-                          teksMulai(sesi.waktu, sekarang),
-                          style: text.labelLarge,
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.s),
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: scheme.primaryContainer,
-                          foregroundColor: scheme.onPrimaryContainer,
-                        ),
-                        onPressed: () => _bukaSesi(sirkel, sesi),
-                        icon: Icon(bisaMasuk ? Icons.videocam : Icons.info_outline),
-                        label: Text(
-                          bisaMasuk
-                              ? SirkelSayaStrings.masukSesi
-                              : SirkelSayaStrings.detailSesi,
-                        ),
+                    // Baris waktu mulai + tombol sesi hanya untuk sesi terdekat.
+                    // Label "Masuk sesi" bila sudah ≤ 15 menit lagi, selain itu "Detail sesi".
+                    if (terdekat) ...[
+                      const Divider(height: AppSizes.l),
+                      Row(
+                        children: [
+                          Expanded(
+                            // Dihitung dari selisih waktu sesi dan sekarang.
+                            child: Text(
+                              teksMulai(sesi.waktu, sekarang),
+                              style: text.labelLarge,
+                            ),
+                          ),
+                          const SizedBox(width: AppSizes.s),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _bukaSesi(sirkel, sesi),
+                            icon: Icon(
+                              bisaMasuk
+                                  ? (online ? Icons.videocam : Icons.place)
+                                  : Icons.info_outline,
+                            ),
+                            label: Text(
+                              bisaMasuk
+                                  ? SirkelSayaStrings.masukSesi
+                                  : SirkelSayaStrings.detailSesi,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
       ],

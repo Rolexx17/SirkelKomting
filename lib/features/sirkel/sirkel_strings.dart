@@ -43,7 +43,6 @@ class SirkelStrings {
   static String kursiTersisa(int n) => '$n kursi tersisa';
   static const kursiPenuh = 'Kursi penuh';
   static const gabung = 'Gabung sirkel';
-  static const sudahGabung = 'Sudah bergabung';
   static const kamuMentor = 'Kamu mentor sirkel ini';
   static const kamuAnggota = 'Kamu anggota sirkel ini';
   static const keluarSirkel = 'Keluar sirkel';

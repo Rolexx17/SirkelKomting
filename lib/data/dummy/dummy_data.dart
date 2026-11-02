@@ -410,7 +410,8 @@ class DummyData {
   static int get jumlahJamBelajar => _jamBelajar;
 
   // ---------------- Jadwal ----------------
-  /// Sesi dari semua sirkel yang diikuti, dari sekarang sampai 14 hari ke depan.
+  /// Sesi dari semua sirkel yang diikuti yang belum selesai (termasuk yang sedang
+  /// berlangsung) sampai 14 hari ke depan.
   /// Dihitung ulang setiap kali dibaca, jadi tanggalnya selalu mengikuti hari ini.
   static List<Sesi> get jadwalSesi => jadwalSesiSejak(DateTime.now());
 
@@ -424,9 +425,11 @@ class DummyData {
       if (menit == null) continue;
       final hariSesi = sirkel.daftarNomorHari;
 
-      // Periksa setiap tanggal dari hari ini sampai 14 hari ke depan; ambil yang
-      // harinya cocok. DateTime otomatis menyesuaikan pergantian bulan/tahun.
-      for (var i = 0; i <= rentangJadwalHari; i++) {
+      // Periksa setiap tanggal dari kemarin sampai 14 hari ke depan; ambil yang
+      // harinya cocok. Kemarin ikut diperiksa karena sesi larut malam (misalnya
+      // 23.30) masih berlangsung lewat tengah malam. DateTime otomatis
+      // menyesuaikan pergantian bulan/tahun.
+      for (var i = -1; i <= rentangJadwalHari; i++) {
         final waktu = DateTime(
           sekarang.year,
           sekarang.month,
@@ -435,8 +438,11 @@ class DummyData {
           menit % 60,
         );
         if (!hariSesi.contains(waktu.weekday)) continue;
-        // Sesi hari ini yang jamnya sudah lewat, atau yang melewati batas, tidak dihitung.
-        if (waktu.isBefore(sekarang) || waktu.isAfter(batas)) continue;
+        // Sesi dibuang hanya bila SUDAH SELESAI (mulai + 90 menit tidak lagi
+        // setelah sekarang), jadi sesi yang sedang berlangsung tetap tampil.
+        // Sesi yang melewati batas 14 hari juga tidak dihitung.
+        final sudahSelesai = !waktu.add(Sesi.durasi).isAfter(sekarang);
+        if (sudahSelesai || waktu.isAfter(batas)) continue;
         hasil.add(Sesi(sirkelId: sirkel.id, waktu: waktu));
       }
     }
@@ -456,9 +462,9 @@ class DummyData {
   /// pengingat sesi terdekat (bila ada) → notifikasi tambahan → notifikasi statis.
   /// Status dibaca diambil dari [_notifikasiDibaca] dan [_pengingatDibaca].
   static List<Notifikasi> notifikasiSejak(DateTime sekarang) {
-    final pengingat = _pengingatSesi(sekarang);
     return [
-      if (pengingat != null) pengingat,
+      // Null-aware element: pengingat hanya masuk daftar bila tidak null.
+      ?_pengingatSesi(sekarang),
       for (final n in [..._notifikasiTambahan, ..._notifikasiStatis])
         _notifikasiDibaca.contains(n.id) ? n.copyWith(belumDibaca: false) : n,
     ];

@@ -56,14 +56,21 @@ class _SesiSheetState extends State<_SesiSheet> {
     setState(() => _disalin = true);
   }
 
-  void _masuk() {
+  void _masuk({required bool online}) {
+    final lokasi = widget.sirkel.lokasi;
     // Messenger diambil sebelum sheet ditutup agar SnackBar tampil di layar asal.
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pop();
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(SirkelSayaStrings.membuka(widget.sirkel.lokasi))),
+        SnackBar(
+          content: Text(
+            online
+                ? SirkelSayaStrings.membuka(lokasi)
+                : SirkelSayaStrings.membukaPeta(lokasi),
+          ),
+        ),
       );
   }
 
@@ -156,10 +163,15 @@ class _SesiSheetState extends State<_SesiSheet> {
                 ),
               ),
             const SizedBox(height: AppSizes.xl),
+            // Online → "Masuk sesi" (rapat); offline → "Lihat lokasi" (tempat bertemu).
             FilledButton.icon(
-              onPressed: bisaMasuk ? _masuk : null,
-              icon: const Icon(Icons.videocam),
-              label: const Text(SirkelSayaStrings.masukSesi),
+              onPressed: bisaMasuk ? () => _masuk(online: online) : null,
+              icon: Icon(online ? Icons.videocam : Icons.place),
+              label: Text(
+                online
+                    ? SirkelSayaStrings.masukSesi
+                    : SirkelSayaStrings.lihatLokasi,
+              ),
             ),
             if (!bisaMasuk)
               Padding(

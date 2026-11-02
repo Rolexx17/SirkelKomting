@@ -55,14 +55,17 @@ class _DaftarScreenState extends State<DaftarScreen> {
     if (!formValid || _prodi == null) return;
 
     // Data pendaftaran disimpan sebagai pengguna aktif, sehingga Beranda dan Profil
-    // langsung menampilkan nama, prodi, dan peran yang baru. akunBaru: avatar
-    // dikosongkan, jadi UserAvatar menampilkan inisial, bukan foto Nadia.
+    // langsung menampilkan nama dan prodi yang baru. akunBaru: avatar dikosongkan,
+    // jadi UserAvatar menampilkan inisial, bukan foto Nadia.
     DummyData.ubahProfil(
       nama: _namaController.text.trim(),
       prodi: _prodi!,
-      mentor: _peran == _Peran.mentor,
+      mentor: false,
       akunBaru: true,
     );
+    // Memilih Mentor tidak langsung menjadi mentor: sama seperti "Daftar jadi mentor"
+    // di Profil, statusnya menjadi "menunggu" (sedang ditinjau) + notifikasi mentor.
+    if (_peran == _Peran.mentor) DummyData.ajukanMentor();
 
     // Messenger diambil sebelum pindah halaman; SnackBar tetap tampil di MainShell.
     final messenger = ScaffoldMessenger.of(context);
