@@ -5,6 +5,7 @@ import 'package:sirkel_mobile/core/utils/responsive.dart';
 import 'package:sirkel_mobile/data/dummy/dummy_data.dart';
 import 'package:sirkel_mobile/data/models/app_user.dart';
 import 'package:sirkel_mobile/data/models/notifikasi.dart';
+import 'package:sirkel_mobile/data/models/sesi.dart';
 import 'package:sirkel_mobile/data/models/sirkel.dart';
 import 'package:sirkel_mobile/features/buat_sirkel/buat_sirkel_screen.dart';
 import 'package:sirkel_mobile/features/buat_sirkel/buat_sirkel_strings.dart';
@@ -69,14 +70,15 @@ void main() {
       expect(DummyData.jadwalSesi.any((s) => s.sirkelId == 's4'), isTrue);
     });
 
-    test('semua sesi berada di antara sekarang dan 14 hari ke depan', () {
+    test('semua sesi belum selesai dan tidak lebih dari 14 hari ke depan', () {
       final sebelum = DateTime.now();
       final jadwal = DummyData.jadwalSesi;
       final sesudah = DateTime.now();
 
       expect(jadwal, isNotEmpty);
       for (final s in jadwal) {
-        expect(s.waktu.isBefore(sebelum), isFalse);
+        // Sesi yang sedang berlangsung boleh ada, asalkan belum selesai.
+        expect(s.waktu.add(Sesi.durasi).isAfter(sebelum), isTrue);
         expect(
           s.waktu.isAfter(sesudah.add(const Duration(days: 14))),
           isFalse,
@@ -84,9 +86,18 @@ void main() {
       }
     });
 
-    test('sesi hari ini yang jamnya sudah lewat tidak dihitung', () {
-      // Kamis 5 Nov 2026 pukul 20.00; sesi s1 (Kamis 19.00) hari itu sudah lewat.
-      final jadwal = DummyData.jadwalSesiSejak(DateTime(2026, 11, 5, 20));
+    test('pukul 19.30, sesi s1 19.00 hari itu (sedang berlangsung) masih ada', () {
+      // Kamis 5 Nov 2026 pukul 19.30; sesi s1 Kamis 19.00 baru selesai 20.30.
+      final jadwal = DummyData.jadwalSesiSejak(DateTime(2026, 11, 5, 19, 30));
+      final s1 = jadwal.where((s) => s.sirkelId == 's1').toList();
+
+      expect(s1.first.waktu, DateTime(2026, 11, 5, 19));
+      expect(jadwal.first.waktu, DateTime(2026, 11, 5, 19));
+    });
+
+    test('pukul 20.31, sesi s1 hari itu sudah selesai dan tidak dihitung', () {
+      // Kamis 5 Nov 2026 pukul 20.31: sesi 19.00–20.30 sudah selesai.
+      final jadwal = DummyData.jadwalSesiSejak(DateTime(2026, 11, 5, 20, 31));
       final s1 = jadwal.where((s) => s.sirkelId == 's1').toList();
 
       expect(s1.first.waktu, DateTime(2026, 11, 12, 19));
@@ -126,8 +137,8 @@ void main() {
   });
 
   group('Data iterasi 3 (unit test)', () {
-    // Kamis 5 Nov 2026 pukul 20.00: sesi Kalkulus I (Kamis 19.00) hari itu sudah lewat.
-    final kamisMalam = DateTime(2026, 11, 5, 20);
+    // Kamis 5 Nov 2026 pukul 20.31: sesi Kalkulus I (Kamis 19.00–20.30) hari itu sudah selesai.
+    final kamisMalam = DateTime(2026, 11, 5, 20, 31);
 
     String buatSirkelBaru() => DummyData.tambahSirkel(
           mataKuliah: 'Kalkulus I',
@@ -157,9 +168,9 @@ void main() {
         DummyData.notifikasiSejak(DateTime(2026, 11, 4, 8)).first.teks,
         contains('Hari ini pukul 16.00'),
       );
-      // Rabu 4 Nov 17.00 → Kalkulus I besok (Kamis) pukul 19.00.
+      // Rabu 4 Nov 17.31 (Basis Data 16.00–17.30 sudah selesai) → Kalkulus I besok pukul 19.00.
       expect(
-        DummyData.notifikasiSejak(DateTime(2026, 11, 4, 17)).first.teks,
+        DummyData.notifikasiSejak(DateTime(2026, 11, 4, 17, 31)).first.teks,
         contains('Besok pukul 19.00'),
       );
     });
