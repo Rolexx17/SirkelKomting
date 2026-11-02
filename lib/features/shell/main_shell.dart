@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_sizes.dart';
 import '../../core/utils/responsive.dart';
-import '../../routes/app_routes.dart';
 import '../../shared/widgets/app_logo.dart';
 import '../beranda/beranda_screen.dart';
+import '../buat_sirkel/buka_buat_sirkel.dart';
 import '../jelajah/jelajah_screen.dart';
 import '../materi/ruang_materi_screen.dart';
 import '../profil/profil_screen.dart';
@@ -78,9 +78,10 @@ class MainShellState extends State<MainShell> {
   }
 
   Future<void> _bukaBuatSirkel() async {
-    await Navigator.of(context).pushNamed(AppRoutes.buatSirkel);
+    // bukaBuatSirkel memeriksa status mentor; form hanya terbuka untuk mentor.
+    final dibuka = await bukaBuatSirkel(context);
     // Kata kunci dikosongkan supaya sirkel yang baru dibuat pasti terlihat.
-    if (mounted) bukaJelajah();
+    if (dibuka && mounted) bukaJelajah();
   }
 
   @override

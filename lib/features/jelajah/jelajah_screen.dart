@@ -7,6 +7,7 @@ import '../../data/models/sirkel.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/sirkel_card.dart';
+import '../buat_sirkel/buka_buat_sirkel.dart';
 import '../sirkel/sirkel_strings.dart';
 import '../sirkel/sirkel_waktu.dart';
 import 'filter_sheet.dart';
@@ -124,6 +125,13 @@ class _JelajahScreenState extends State<JelajahScreen> {
     });
   }
 
+  /// FAB Buat Sirkel: form hanya terbuka untuk mentor (diperiksa bukaBuatSirkel).
+  /// Grid dibangun ulang setelahnya agar sirkel baru langsung terlihat.
+  Future<void> _bukaBuatSirkel() async {
+    await bukaBuatSirkel(context);
+    if (mounted) setState(() {});
+  }
+
   void _pilihSemua() => setState(() {
         _filter = const FilterSirkel();
         _mingguIni = false;
@@ -166,7 +174,7 @@ class _JelajahScreenState extends State<JelajahScreen> {
       // Di layar lebar FAB sudah ada di NavigationRail (MainShell), jadi di sini hanya untuk ponsel.
       floatingActionButton: context.isCompact
           ? FloatingActionButton.extended(
-              onPressed: () => _buka(AppRoutes.buatSirkel),
+              onPressed: _bukaBuatSirkel,
               icon: const Icon(Icons.add),
               label: const Text(JelajahStrings.buatSirkel),
             )

@@ -376,7 +376,8 @@ class DummyData {
   static List<String> _sirkelDisimpan = [];
   static List<String> _materiDisimpan = [];
 
-  static bool _mentorDiajukan = false;
+  /// Waktu pengguna aktif mengajukan diri jadi mentor; null = belum mengajukan.
+  static DateTime? _waktuPengajuan;
 
   /// Nomor id sirkel baru berikutnya (s7, s8, ...).
   static int _nomorBerikut = 7;
@@ -388,11 +389,21 @@ class DummyData {
   /// Pengguna yang sedang masuk (awalnya Nadia); bisa berubah lewat [ubahProfil].
   static AppUser get penggunaAktif => _aktif;
 
-  /// Peserta → menunggu (setelah [ajukanMentor]) → mentor (setelah disetujui atau
-  /// menerbitkan sirkel). Diturunkan dari data, jadi tidak pernah tidak sinkron.
-  static StatusMentor get statusMentor {
+  /// Lama peninjauan pengajuan mentor (simulasi tanpa backend): setelah waktu ini
+  /// pengajuan dianggap disetujui tim Sirkel.
+  static const lamaPeninjauanMentor = Duration(seconds: 30);
+
+  static StatusMentor get statusMentor => statusMentorSejak(DateTime.now());
+
+  /// Peserta → menunggu (setelah [ajukanMentor]) → mentor (setelah peninjauan
+  /// selesai). Dihitung dari waktu pengajuan, jadi tidak perlu timer dan bisa dites.
+  static StatusMentor statusMentorSejak(DateTime sekarang) {
     if (_aktif.isMentor) return StatusMentor.mentor;
-    return _mentorDiajukan ? StatusMentor.menunggu : StatusMentor.peserta;
+    final diajukan = _waktuPengajuan;
+    if (diajukan == null) return StatusMentor.peserta;
+    return sekarang.difference(diajukan) >= lamaPeninjauanMentor
+        ? StatusMentor.mentor
+        : StatusMentor.menunggu;
   }
 
   /// Salinan tak-bisa-diubah; perubahan hanya lewat fungsi di kelas ini.
@@ -453,17 +464,19 @@ class DummyData {
   // ---------------- Notifikasi ----------------
   /// Id tetap untuk notifikasi pengingat sesi.
   static const idPengingatSesi = 'n-sesi';
+  static const idMentorDisetujui = 'n-mentor-disetujui';
 
   static List<Notifikasi> get notifikasi => notifikasiSejak(DateTime.now());
 
   static bool get adaNotifikasiBaru => notifikasi.any((n) => n.belumDibaca);
 
-  /// Menyusun daftar notifikasi pada waktu [sekarang]:
-  /// pengingat sesi terdekat (bila ada) → notifikasi tambahan → notifikasi statis.
+  /// Menyusun daftar notifikasi pada waktu [sekarang]: kabar mentor disetujui
+  /// (bila ada) → pengingat sesi terdekat (bila ada) → notifikasi tambahan → statis.
   /// Status dibaca diambil dari [_notifikasiDibaca] dan [_pengingatDibaca].
   static List<Notifikasi> notifikasiSejak(DateTime sekarang) {
     return [
-      // Null-aware element: pengingat hanya masuk daftar bila tidak null.
+      // Null-aware element: item hanya masuk daftar bila tidak null.
+      ?_mentorDisetujui(sekarang),
       ?_pengingatSesi(sekarang),
       for (final n in [..._notifikasiTambahan, ..._notifikasiStatis])
         _notifikasiDibaca.contains(n.id) ? n.copyWith(belumDibaca: false) : n,
@@ -487,6 +500,22 @@ class DummyData {
       belumDibaca: _pengingatDibaca != _kunciSesi(sesi),
       gambar: sirkel.mentor.avatar,
       sirkelId: sirkel.id,
+    );
+  }
+
+  /// Kabar bahwa pengajuan mentor disetujui; null bila belum mengajukan atau
+  /// peninjauannya belum selesai.
+  static Notifikasi? _mentorDisetujui(DateTime sekarang) {
+    if (_waktuPengajuan == null) return null;
+    if (statusMentorSejak(sekarang) != StatusMentor.mentor) return null;
+
+    return Notifikasi(
+      id: idMentorDisetujui,
+      teks: 'Pengajuan mentor **disetujui**. Sekarang kamu bisa membuat sirkel.',
+      waktu: _waktuBaru,
+      grup: _grupHariIni,
+      jenis: JenisNotifikasi.mentor,
+      belumDibaca: !_notifikasiDibaca.contains(idMentorDisetujui),
     );
   }
 
@@ -583,8 +612,9 @@ class DummyData {
   }
 
   /// Membuat sirkel baru dengan pengguna aktif sebagai mentornya, lalu mengembalikan id barunya.
-  /// Pengguna otomatis berstatus mentor, sirkel diletakkan paling atas di Jelajah, masuk
-  /// [sirkelDiikuti] (jadwalnya muncul di Sirkel Saya), dan ada notifikasi "diterbitkan".
+  /// Hanya dipanggil untuk mentor (layar memeriksa [statusMentor] lewat bukaBuatSirkel),
+  /// jadi status peran tidak diubah di sini. Sirkel diletakkan paling atas di Jelajah,
+  /// masuk [sirkelDiikuti] (jadwalnya muncul di Sirkel Saya), dan ada notifikasi "diterbitkan".
   static String tambahSirkel({
     required String mataKuliah,
     required String judul,
@@ -594,9 +624,6 @@ class DummyData {
     required int kuota,
     required String cover,
   }) {
-    if (!_aktif.isMentor) _gantiPenggunaAktif(_aktif.copyWith(isMentor: true));
-    _mentorDiajukan = false;
-
     final id = 's${_nomorBerikut++}';
     _sirkel.insert(
       0,
@@ -631,7 +658,7 @@ class DummyData {
 
   // ---------------- Profil & mentor ----------------
   /// Mengganti nama, prodi, dan (opsional) peran pengguna aktif. Bila [akunBaru],
-  /// avatar dikosongkan (UserAvatar menampilkan inisial) dan pengajuan mentor dibatalkan.
+  /// avatar dikosongkan (UserAvatar menampilkan inisial) dan pengajuan mentor dihapus.
   static void ubahProfil({
     required String nama,
     required String prodi,
@@ -646,14 +673,16 @@ class DummyData {
         avatar: akunBaru ? '' : null,
       ),
     );
-    if (akunBaru) _mentorDiajukan = false;
+    if (akunBaru) _waktuPengajuan = null;
   }
 
   /// Mengajukan diri menjadi mentor: peserta → menunggu, plus notifikasi jenis mentor.
-  /// Diabaikan bila sudah menunggu atau sudah mentor.
-  static void ajukanMentor() {
-    if (statusMentor != StatusMentor.peserta) return;
-    _mentorDiajukan = true;
+  /// Disetujui otomatis [lamaPeninjauanMentor] kemudian (simulasi peninjauan).
+  /// Diabaikan bila sudah menunggu atau sudah mentor. [sekarang] bisa diisi untuk test.
+  static void ajukanMentor([DateTime? sekarang]) {
+    final waktu = sekarang ?? DateTime.now();
+    if (statusMentorSejak(waktu) != StatusMentor.peserta) return;
+    _waktuPengajuan = waktu;
     _tambahNotifikasi(
       teks: 'Pengajuan mentor sedang ditinjau tim Sirkel.',
       jenis: JenisNotifikasi.mentor,
@@ -708,7 +737,7 @@ class DummyData {
     _pengingatDibaca = null;
     _sirkelDisimpan = [];
     _materiDisimpan = [];
-    _mentorDiajukan = false;
+    _waktuPengajuan = null;
     _nomorBerikut = 7;
     _nomorNotifikasi = 1;
   }

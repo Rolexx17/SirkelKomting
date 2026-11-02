@@ -4,7 +4,6 @@ import '../../core/constants/app_assets.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/dummy/dummy_data.dart';
-import '../../data/models/app_user.dart';
 import '../../data/models/sirkel.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/app_text_field.dart';
@@ -362,28 +361,6 @@ class _BuatSirkelScreenState extends State<BuatSirkelScreen> {
           ],
         ),
         const SizedBox(height: AppSizes.xl),
-        // Peserta yang menerbitkan sirkel otomatis menjadi mentor; beri tahu lebih dulu.
-        if (DummyData.statusMentor != StatusMentor.mentor) ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSizes.m),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, color: scheme.primary),
-                  const SizedBox(width: AppSizes.sm),
-                  Expanded(
-                    child: Text(
-                      BuatSirkelStrings.infoJadiMentor,
-                      style: text.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSizes.m),
-        ],
         FilledButton(
           onPressed: _terbitkan,
           child: const Text(BuatSirkelStrings.terbitkan),

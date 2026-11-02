@@ -9,8 +9,10 @@ import 'package:sirkel_mobile/data/models/sesi.dart';
 import 'package:sirkel_mobile/data/models/sirkel.dart';
 import 'package:sirkel_mobile/features/buat_sirkel/buat_sirkel_screen.dart';
 import 'package:sirkel_mobile/features/buat_sirkel/buat_sirkel_strings.dart';
+import 'package:sirkel_mobile/features/buat_sirkel/buka_buat_sirkel.dart';
 import 'package:sirkel_mobile/features/materi/materi_strings.dart';
 import 'package:sirkel_mobile/features/materi/pembaca_materi_screen.dart';
+import 'package:sirkel_mobile/routes/app_routes.dart';
 
 void main() {
   // Data DummyData statis; dikembalikan ke kondisi awal sebelum setiap test.
@@ -224,16 +226,39 @@ void main() {
       );
     });
 
-    test('tambahSirkel menjadikan pengguna mentor dan menambah notifikasi terbit', () {
+    test('tambahSirkel tidak mengubah status peran dan menambah notifikasi terbit', () {
       final id = buatSirkelBaru();
 
-      expect(DummyData.statusMentor, StatusMentor.mentor);
-      expect(DummyData.penggunaAktif.isMentor, isTrue);
+      // Peran hanya berubah lewat pengajuan mentor, bukan lewat menerbitkan sirkel.
+      expect(DummyData.statusMentor, StatusMentor.peserta);
+      expect(DummyData.penggunaAktif.isMentor, isFalse);
       expect(
         DummyData.notifikasi
             .any((n) => n.sirkelId == id && n.teks.contains('Latihan Integral')),
         isTrue,
       );
+    });
+
+    test('pengajuan mentor disetujui otomatis setelah lamaPeninjauanMentor', () {
+      final diajukan = DateTime(2026, 11, 4, 10);
+      DummyData.ajukanMentor(diajukan);
+
+      final hampir = diajukan.add(
+        DummyData.lamaPeninjauanMentor - const Duration(seconds: 1),
+      );
+      expect(DummyData.statusMentorSejak(hampir), StatusMentor.menunggu);
+      expect(
+        DummyData.notifikasiSejak(hampir)
+            .any((n) => n.id == DummyData.idMentorDisetujui),
+        isFalse,
+      );
+
+      final setelah = diajukan.add(DummyData.lamaPeninjauanMentor);
+      expect(DummyData.statusMentorSejak(setelah), StatusMentor.mentor);
+      // Kabar "disetujui" tampil paling atas dan belum dibaca.
+      final kabar = DummyData.notifikasiSejak(setelah).first;
+      expect(kabar.id, DummyData.idMentorDisetujui);
+      expect(kabar.belumDibaca, isTrue);
     });
 
     test('sirkelTersimpan dan materiTersimpan: terakhir disimpan paling atas', () {
@@ -358,24 +383,6 @@ void main() {
       expect(find.byType(TimePickerDialog), findsOneWidget);
     });
 
-    testWidgets('peserta melihat Card keterangan "kamu menjadi mentornya"',
-        (tester) async {
-      await pasangLayar(tester);
-
-      expect(find.text(BuatSirkelStrings.infoJadiMentor), findsOneWidget);
-    });
-
-    testWidgets('mentor tidak melihat Card keterangan', (tester) async {
-      DummyData.ubahProfil(
-        nama: 'Nadia Putri',
-        prodi: 'Sistem Informasi',
-        mentor: true,
-      );
-      await pasangLayar(tester);
-
-      expect(find.text(BuatSirkelStrings.infoJadiMentor), findsNothing);
-    });
-
     testWidgets('Pembaca materi: "Bagian 1 dari 4", lalu Berikutnya ke bagian 2',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
@@ -397,6 +404,68 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Bagian 2 dari 4'), findsOneWidget);
+    });
+  });
+
+  group('bukaBuatSirkel: hanya mentor yang bisa membuat sirkel (widget test)', () {
+    /// Memasang satu tombol yang memanggil bukaBuatSirkel, plus route Buat Sirkel.
+    Future<void> pasangTombol(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          routes: {AppRoutes.buatSirkel: (_) => const BuatSirkelScreen()},
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: TextButton(
+                  onPressed: () => bukaBuatSirkel(context),
+                  child: const Text('Buka'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Buka'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('peserta: dialog "Khusus mentor", Ajukan → status menunggu',
+        (tester) async {
+      await pasangTombol(tester);
+
+      expect(find.text(BuatSirkelStrings.khususMentorJudul), findsOneWidget);
+      expect(find.byType(BuatSirkelScreen), findsNothing);
+
+      await tester.tap(find.text(BuatSirkelStrings.ajukanMentor));
+      await tester.pumpAndSettle();
+
+      expect(DummyData.statusMentor, StatusMentor.menunggu);
+      expect(find.text(BuatSirkelStrings.pengajuanTerkirim), findsOneWidget);
+    });
+
+    testWidgets('sedang ditinjau: dialog status, form tidak terbuka',
+        (tester) async {
+      DummyData.ajukanMentor();
+      await pasangTombol(tester);
+
+      expect(find.text(BuatSirkelStrings.ditinjauJudul), findsOneWidget);
+      expect(find.byType(BuatSirkelScreen), findsNothing);
+    });
+
+    testWidgets('mentor: langsung membuka form Buat Sirkel', (tester) async {
+      DummyData.ubahProfil(
+        nama: 'Nadia Putri',
+        prodi: 'Sistem Informasi',
+        mentor: true,
+      );
+      await pasangTombol(tester);
+
+      expect(find.byType(BuatSirkelScreen), findsOneWidget);
     });
   });
 }
