@@ -29,9 +29,10 @@ class MateriStrings {
       'Materi ini mungkin sudah dihapus. Silakan kembali dan pilih materi lain.';
 
   // Pembaca Materi
-  static String indikatorHalaman(int ke, int total) => 'Halaman $ke dari $total';
-  static String judulHalaman(int ke) => 'Halaman $ke';
-  static String labelThumbnail(int ke) => '$ke';
+  /// Contoh: "Bagian 1 dari 4 · hlm 1–3" (atau "hlm 1" bila satu halaman).
+  static String subjudulPembaca(int ke, int total, int awal, int akhir) =>
+      'Bagian $ke dari $total · hlm ${awal == akhir ? '$awal' : '$awal–$akhir'}';
+  static String labelBagian(int ke) => 'Bagian $ke';
   static const sebelumnya = 'Sebelumnya';
   static const berikutnya = 'Berikutnya';
   static const selesai = 'Selesai';

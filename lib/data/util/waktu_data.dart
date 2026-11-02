@@ -20,6 +20,34 @@ List<int> nomorHariDariTeks(String hari) {
   return hasil.toList()..sort();
 }
 
+const _namaHari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+const _namaBulan = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+/// Label tanggal sesi relatif terhadap [sekarang]: "Hari ini", "Besok", atau
+/// "Rabu, 4 Nov". Hanya tanggal yang dibandingkan, jam diabaikan.
+String labelHariSesi(DateTime sesi, DateTime sekarang) {
+  // Memakai tanggal UTC agar selisih hari tidak terganggu pergantian jam musim panas.
+  final hariSesi = DateTime.utc(sesi.year, sesi.month, sesi.day);
+  final hariIni = DateTime.utc(sekarang.year, sekarang.month, sekarang.day);
+  final selisih = hariSesi.difference(hariIni).inDays;
+  if (selisih == 0) return 'Hari ini';
+  if (selisih == 1) return 'Besok';
+  return '${_namaHari[sesi.weekday - 1]}, ${sesi.day} ${_namaBulan[sesi.month - 1]}';
+}
+
 /// Membaca jam "19.00" (atau "19:00") menjadi menit sejak tengah malam; null bila format salah.
 int? menitDariJam(String jam) {
   final bagian = jam.trim().split(RegExp('[.:]'));

@@ -33,6 +33,8 @@ class BuatSirkelStrings {
   static const tambahKuota = 'Tambah kuota';
 
   static const terbitkan = 'Terbitkan sirkel';
+  static const infoJadiMentor =
+      'Dengan menerbitkan sirkel ini, kamu menjadi mentornya.';
   static const berhasil = 'Sirkel berhasil diterbitkan';
 
   // Bottom sheet pemilih sampul

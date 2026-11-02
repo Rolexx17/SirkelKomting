@@ -3,9 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sirkel_mobile/core/theme/app_theme.dart';
 import 'package:sirkel_mobile/core/utils/responsive.dart';
 import 'package:sirkel_mobile/data/dummy/dummy_data.dart';
+import 'package:sirkel_mobile/data/models/app_user.dart';
+import 'package:sirkel_mobile/data/models/notifikasi.dart';
 import 'package:sirkel_mobile/data/models/sirkel.dart';
 import 'package:sirkel_mobile/features/buat_sirkel/buat_sirkel_screen.dart';
 import 'package:sirkel_mobile/features/buat_sirkel/buat_sirkel_strings.dart';
+import 'package:sirkel_mobile/features/materi/materi_strings.dart';
+import 'package:sirkel_mobile/features/materi/pembaca_materi_screen.dart';
 
 void main() {
   // Data DummyData statis; dikembalikan ke kondisi awal sebelum setiap test.
@@ -121,6 +125,154 @@ void main() {
     });
   });
 
+  group('Data iterasi 3 (unit test)', () {
+    // Kamis 5 Nov 2026 pukul 20.00: sesi Kalkulus I (Kamis 19.00) hari itu sudah lewat.
+    final kamisMalam = DateTime(2026, 11, 5, 20);
+
+    String buatSirkelBaru() => DummyData.tambahSirkel(
+          mataKuliah: 'Kalkulus I',
+          judul: 'Latihan Integral',
+          mode: ModeBelajar.online,
+          hari: 'Senin & Rabu',
+          jam: '16.00',
+          kuota: 6,
+          cover: DummyData.cariSirkel('s1')!.cover,
+        );
+
+    test('pengingat sesi merujuk sirkel dari sesi pertama jadwal', () {
+      final sesiPertama = DummyData.jadwalSesiSejak(kamisMalam).first;
+      final pengingat = DummyData.notifikasiSejak(kamisMalam).first;
+
+      expect(pengingat.id, DummyData.idPengingatSesi);
+      expect(pengingat.jenis, JenisNotifikasi.sesi);
+      expect(pengingat.sirkelId, sesiPertama.sirkelId);
+      // Sesi pertama setelah Kamis malam: Struktur Data, Sabtu 7 Nov 10.00.
+      expect(pengingat.teks, contains('Struktur Data'));
+      expect(pengingat.teks, contains('Sabtu, 7 Nov'));
+    });
+
+    test('label pengingat memakai "Hari ini" dan "Besok"', () {
+      // Rabu 4 Nov 08.00 → Basis Data hari ini pukul 16.00.
+      expect(
+        DummyData.notifikasiSejak(DateTime(2026, 11, 4, 8)).first.teks,
+        contains('Hari ini pukul 16.00'),
+      );
+      // Rabu 4 Nov 17.00 → Kalkulus I besok (Kamis) pukul 19.00.
+      expect(
+        DummyData.notifikasiSejak(DateTime(2026, 11, 4, 17)).first.teks,
+        contains('Besok pukul 19.00'),
+      );
+    });
+
+    test('notifikasi statis "dimulai 1 jam lagi" sudah tidak ada', () {
+      final daftar = DummyData.notifikasi;
+      expect(daftar.any((n) => n.teks.contains('dimulai 1 jam lagi')), isFalse);
+      expect(daftar.any((n) => n.id == 'n1'), isFalse);
+    });
+
+    test('gabung("s4") menambah notifikasi diterima yang belum dibaca', () {
+      DummyData.gabung('s4');
+
+      final baru = DummyData.notifikasi
+          .where((n) => n.jenis == JenisNotifikasi.diterima && n.sirkelId == 's4')
+          .toList();
+      expect(baru, hasLength(1));
+      expect(baru.single.belumDibaca, isTrue);
+      expect(baru.single.teks, contains('Statistika · Uji Hipotesis'));
+    });
+
+    test('keluarSirkel("s1") menghapus s1 dari sirkelDiikuti dan jadwalSesi', () {
+      final anggotaAwal = DummyData.cariSirkel('s1')!.anggota.length;
+
+      DummyData.keluarSirkel('s1');
+
+      expect(DummyData.sirkelDiikuti.any((s) => s.id == 's1'), isFalse);
+      expect(DummyData.jadwalSesi.any((s) => s.sirkelId == 's1'), isFalse);
+      expect(DummyData.cariSirkel('s1')!.anggota.length, anggotaAwal - 1);
+    });
+
+    test('keluarSirkel diabaikan untuk sirkel yang mentornya pengguna aktif', () {
+      final id = buatSirkelBaru();
+
+      DummyData.keluarSirkel(id);
+
+      expect(DummyData.sudahGabung(id), isTrue);
+      expect(DummyData.jadwalSesi.any((s) => s.sirkelId == id), isTrue);
+    });
+
+    test('ajukanMentor: status menjadi menunggu dan ada notifikasi mentor', () {
+      expect(DummyData.statusMentor, StatusMentor.peserta);
+
+      DummyData.ajukanMentor();
+
+      expect(DummyData.statusMentor, StatusMentor.menunggu);
+      expect(
+        DummyData.notifikasi
+            .any((n) => n.jenis == JenisNotifikasi.mentor && n.gambar == null),
+        isTrue,
+      );
+    });
+
+    test('tambahSirkel menjadikan pengguna mentor dan menambah notifikasi terbit', () {
+      final id = buatSirkelBaru();
+
+      expect(DummyData.statusMentor, StatusMentor.mentor);
+      expect(DummyData.penggunaAktif.isMentor, isTrue);
+      expect(
+        DummyData.notifikasi
+            .any((n) => n.sirkelId == id && n.teks.contains('Latihan Integral')),
+        isTrue,
+      );
+    });
+
+    test('sirkelTersimpan dan materiTersimpan: terakhir disimpan paling atas', () {
+      DummyData.toggleSimpanSirkel('s2');
+      DummyData.toggleSimpanSirkel('s5');
+      DummyData.toggleSimpanMateri('m1');
+      DummyData.toggleSimpanMateri('m3');
+
+      expect(DummyData.sirkelTersimpan.map((s) => s.id).toList(), ['s5', 's2']);
+      expect(DummyData.materiTersimpan.map((m) => m.id).toList(), ['m3', 'm1']);
+    });
+
+    test('ubahProfil(akunBaru: true) mengosongkan avatar di semua tempat', () {
+      DummyData.ubahProfil(
+        nama: 'Budi Santoso',
+        prodi: 'Manajemen',
+        akunBaru: true,
+      );
+
+      expect(DummyData.penggunaAktif.avatar, isEmpty);
+      final diS1 =
+          DummyData.cariSirkel('s1')!.anggota.firstWhere((a) => a.id == 'u1');
+      expect(diS1.avatar, isEmpty);
+      expect(diS1.nama, 'Budi Santoso');
+    });
+
+    test('pengingat yang sudah dibaca tampil belum dibaca lagi bila sesinya berganti',
+        () {
+      DummyData.tandaiSemuaNotifikasiDibaca();
+      expect(DummyData.adaNotifikasiBaru, isFalse);
+      final sirkelLama = DummyData.notifikasi.first.sirkelId!;
+
+      DummyData.keluarSirkel(sirkelLama);
+
+      final pengingat = DummyData.notifikasi.first;
+      expect(pengingat.id, DummyData.idPengingatSesi);
+      expect(pengingat.sirkelId, isNot(sirkelLama));
+      expect(pengingat.belumDibaca, isTrue);
+    });
+
+    test('rentangHalaman membagi halaman materi rata ke setiap bagian', () {
+      final m1 = DummyData.cariMateri('m1')!; // 12 hlm, 4 bagian
+      expect(m1.rentangHalaman(0), (awal: 1, akhir: 3));
+      expect(m1.rentangHalaman(3), (awal: 10, akhir: 12));
+
+      final m2 = DummyData.cariMateri('m2')!; // 1 hlm, 3 bagian
+      expect(m2.rentangHalaman(2), (awal: 1, akhir: 1));
+    });
+  });
+
   group('BuatSirkelScreen (widget test)', () {
     Future<void> pasangLayar(WidgetTester tester) async {
       // Ukuran ponsel 360×800 (logical pixel).
@@ -193,6 +345,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TimePickerDialog), findsOneWidget);
+    });
+
+    testWidgets('peserta melihat Card keterangan "kamu menjadi mentornya"',
+        (tester) async {
+      await pasangLayar(tester);
+
+      expect(find.text(BuatSirkelStrings.infoJadiMentor), findsOneWidget);
+    });
+
+    testWidgets('mentor tidak melihat Card keterangan', (tester) async {
+      DummyData.ubahProfil(
+        nama: 'Nadia Putri',
+        prodi: 'Sistem Informasi',
+        mentor: true,
+      );
+      await pasangLayar(tester);
+
+      expect(find.text(BuatSirkelStrings.infoJadiMentor), findsNothing);
+    });
+
+    testWidgets('Pembaca materi: "Bagian 1 dari 4", lalu Berikutnya ke bagian 2',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      final m1 = DummyData.cariMateri('m1')!;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: PembacaMateriScreen(materi: m1),
+        ),
+      );
+
+      expect(find.textContaining('Bagian 1 dari 4'), findsOneWidget);
+      expect(find.text(m1.catatan.first), findsOneWidget);
+
+      await tester.tap(find.text(MateriStrings.berikutnya));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Bagian 2 dari 4'), findsOneWidget);
     });
   });
 }
