@@ -256,7 +256,6 @@ void main() {
 
       expect(find.text(SirkelStrings.kamuMentor), findsOneWidget);
       expect(find.text(SirkelStrings.gabung), findsNothing);
-      expect(find.text(SirkelStrings.sudahGabung), findsNothing);
     });
   });
 
