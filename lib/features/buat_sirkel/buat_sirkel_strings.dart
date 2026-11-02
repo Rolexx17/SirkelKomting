@@ -33,9 +33,21 @@ class BuatSirkelStrings {
   static const tambahKuota = 'Tambah kuota';
 
   static const terbitkan = 'Terbitkan sirkel';
-  static const infoJadiMentor =
-      'Dengan menerbitkan sirkel ini, kamu menjadi mentornya.';
   static const berhasil = 'Sirkel berhasil diterbitkan';
+
+  // Pintu masuk Buat Sirkel (hanya untuk mentor yang sudah disetujui)
+  static const khususMentorJudul = 'Khusus mentor';
+  static const khususMentorPesan =
+      'Hanya mentor yang bisa membuat sirkel. Ajukan diri jadi mentor; '
+      'setelah disetujui, kamu bisa langsung membuat sirkel.';
+  static const nanti = 'Nanti';
+  static const ajukanMentor = 'Ajukan jadi mentor';
+  static const pengajuanTerkirim = 'Pengajuan mentor dikirim. Tunggu persetujuan, ya.';
+  static const ditinjauJudul = 'Pengajuan sedang ditinjau';
+  static const ditinjauPesan =
+      'Kamu bisa membuat sirkel setelah pengajuan mentor disetujui. '
+      'Kabarnya akan muncul di Notifikasi.';
+  static const mengerti = 'Mengerti';
 
   // Bottom sheet pemilih sampul
   static const sheetJudul = 'Pilih sampul';

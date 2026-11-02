@@ -47,6 +47,10 @@ class AuthStrings {
       'Masukkan email kampus yang valid (berakhiran .ac.id)';
   static const sandiWajib = 'Kata sandi wajib diisi';
   static const sandiMinimal = 'Kata sandi minimal 6 karakter';
+  static const sandiLemah = 'Kata sandi lemah';
+  static const sandiSedang = 'Kata sandi sedang';
+  static const sandiKuat = 'Kata sandi kuat';
+  static const saranSandi = 'Gunakan 8+ karakter, huruf besar & kecil, angka, dan simbol.';
   static const namaWajib = 'Nama lengkap wajib diisi';
   static const prodiWajib = 'Pilih program studi';
 }

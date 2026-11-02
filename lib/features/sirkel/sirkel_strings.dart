@@ -52,6 +52,18 @@ class SirkelStrings {
   static String keluarJudul(String judul) => 'Keluar dari $judul?';
   static const keluarPesan = 'Jadwal sirkel ini akan dihapus dari Sirkel saya.';
   static const batal = 'Batal';
+
+  // Dialog jadwal bentrok
+  static const bentrokJudul = 'Jadwal bentrok';
+  static String bentrokPesan({
+    required String judul,
+    required String jadwal,
+    required String judulBentrok,
+    required String jadwalBentrok,
+  }) =>
+      '$judul ($jadwal) bertabrakan dengan $judulBentrok ($jadwalBentrok) '
+      'yang sudah kamu ikuti. Tetap gabung?';
+  static const tetapGabung = 'Tetap gabung';
   static const keluar = 'Keluar';
   static const tidakDitemukan = 'Sirkel tidak ditemukan.';
   static const tidakDitemukanPesan =

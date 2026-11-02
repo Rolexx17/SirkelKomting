@@ -4,11 +4,13 @@ import 'package:sirkel_mobile/core/theme/app_theme.dart';
 import 'package:sirkel_mobile/data/dummy/dummy_data.dart';
 import 'package:sirkel_mobile/data/models/app_user.dart';
 import 'package:sirkel_mobile/features/auth/auth_strings.dart';
+import 'package:sirkel_mobile/features/auth/auth_validator.dart';
 import 'package:sirkel_mobile/features/auth/daftar_screen.dart';
 import 'package:sirkel_mobile/features/auth/masuk_screen.dart';
 import 'package:sirkel_mobile/features/auth/widgets/auth_brand_panel.dart';
 import 'package:sirkel_mobile/features/onboarding/onboarding_screen.dart';
 import 'package:sirkel_mobile/features/onboarding/onboarding_strings.dart';
+import 'package:sirkel_mobile/features/profil/lencana_progres.dart';
 import 'package:sirkel_mobile/features/profil/profil_screen.dart';
 import 'package:sirkel_mobile/features/profil/profil_strings.dart';
 import 'package:sirkel_mobile/features/profil/simpanan_screen.dart';
@@ -325,6 +327,174 @@ void main() {
       await ketuk(tester, find.text(ProfilStrings.tabMateri(1)));
 
       expect(find.text('Rangkuman Limit Fungsi'), findsOneWidget);
+    });
+  });
+
+  group('Iterasi 4: kekuatan kata sandi', () {
+    test('kurang dari 6 karakter selalu lemah, walau lengkap', () {
+      expect(AuthValidator.kekuatanSandi('Ab1!'), KekuatanSandi.lemah);
+    });
+
+    test('6 huruf kecil saja → lemah', () {
+      expect(AuthValidator.kekuatanSandi('abcdef'), KekuatanSandi.lemah);
+    });
+
+    test('8 karakter + angka → sedang', () {
+      expect(AuthValidator.kekuatanSandi('abcdef12'), KekuatanSandi.sedang);
+    });
+
+    test('8+ karakter, huruf besar & kecil, angka, simbol → kuat', () {
+      expect(AuthValidator.kekuatanSandi('Abcdef12!'), KekuatanSandi.kuat);
+    });
+
+    testWidgets('indikator di Daftar berubah saat sandi diketik', (tester) async {
+      await pasang(tester, const DaftarScreen());
+      final kolomSandi = find.byType(TextFormField).at(2);
+
+      expect(find.text(AuthStrings.sandiLemah), findsNothing);
+
+      await tester.enterText(kolomSandi, 'abcdef');
+      await tester.pump();
+      expect(find.text(AuthStrings.sandiLemah), findsOneWidget);
+
+      await tester.enterText(kolomSandi, 'Abcdef12!');
+      await tester.pump();
+      expect(find.text(AuthStrings.sandiKuat), findsOneWidget);
+      expect(find.text(AuthStrings.saranSandi), findsNothing);
+    });
+  });
+
+  group('Iterasi 4: lencana dinamis', () {
+    List<String> nama(List<ProgresLencana> daftar) =>
+        daftar.map((p) => p.lencana.nama).toList();
+
+    test('data awal: 2 didapat di depan, lalu yang paling dekat tercapai', () {
+      final hasil = hitungProgresLencana(
+        sirkelDiikuti: 3,
+        jamBelajar: 24,
+        materiTersimpan: 0,
+        sirkelTersimpan: 0,
+        mentor: false,
+      );
+
+      expect(hasil.where((p) => p.didapat), hasLength(2));
+      expect(nama(hasil).take(3).toList(), [
+        ProfilStrings.lencanaSesiPertama,
+        ProfilStrings.lencanaRajinHadir,
+        ProfilStrings.lencanaAnggotaAktif, // 3/4, paling dekat
+      ]);
+    });
+
+    test('nilai di atas target dibatasi: 6/4 tampil 4/4 dan rasio 1', () {
+      final anggotaAktif = hitungProgresLencana(
+        sirkelDiikuti: 6,
+        jamBelajar: 0,
+        materiTersimpan: 0,
+        sirkelTersimpan: 0,
+        mentor: false,
+      ).firstWhere((p) => p.lencana.nama == ProfilStrings.lencanaAnggotaAktif);
+
+      expect(anggotaAktif.didapat, isTrue);
+      expect(anggotaAktif.nilaiTampil, targetAnggotaAktif);
+      expect(anggotaAktif.rasio, 1.0);
+    });
+
+    test('mentor disetujui membuka lencana Mentor Sebaya', () {
+      final mentorSebaya = hitungProgresLencana(
+        sirkelDiikuti: 0,
+        jamBelajar: 0,
+        materiTersimpan: 0,
+        sirkelTersimpan: 0,
+        mentor: true,
+      ).first;
+
+      expect(mentorSebaya.lencana.nama, ProfilStrings.lencanaMentorSebaya);
+      expect(mentorSebaya.didapat, isTrue);
+    });
+
+    testWidgets('Profil awal: Anggota Aktif masih 3/4', (tester) async {
+      await pasang(tester, const ProfilScreen());
+
+      expect(
+        find.text(ProfilStrings.progres(3, targetAnggotaAktif)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('setelah gabung sirkel ke-4, Anggota Aktif didapat', (tester) async {
+      DummyData.gabung('s4');
+      await pasang(tester, const ProfilScreen());
+
+      expect(
+        find.text(ProfilStrings.progres(3, targetAnggotaAktif)),
+        findsNothing,
+      );
+      // Statistik "Lencana" ikut naik dari 2 menjadi 3.
+      expect(progresLencanaSaatIni().where((p) => p.didapat), hasLength(3));
+    });
+
+    testWidgets('mengetuk lencana membuka detail berisi syarat', (tester) async {
+      await pasang(tester, const ProfilScreen());
+
+      await ketuk(tester, find.text(ProfilStrings.lencanaKolektorMateri));
+
+      expect(
+        find.text(ProfilStrings.syaratKolektorMateri(targetKolektorMateri)),
+        findsOneWidget,
+      );
+      expect(find.text(ProfilStrings.belumDidapat), findsOneWidget);
+    });
+
+    testWidgets('sheet Semua lencana menampilkan jumlah didapat', (tester) async {
+      await pasang(tester, const ProfilScreen());
+
+      await ketuk(tester, find.text(ProfilStrings.semua));
+
+      expect(find.text(ProfilStrings.lencanaTerkumpul(2, 6)), findsOneWidget);
+    });
+  });
+
+  group('Iterasi 4: Simpanan geser hapus & Urungkan', () {
+    test('hapusDariDaftar mengembalikan daftar baru dan posisi asal', () {
+      final hasil = hapusDariDaftar(['s1', 's2', 's3'], 's2');
+      expect(hasil.daftar, ['s1', 's3']);
+      expect(hasil.posisi, 1);
+    });
+
+    test('hapusDariDaftar untuk id yang tidak ada → posisi -1, daftar tetap', () {
+      final hasil = hapusDariDaftar(['s1'], 's9');
+      expect(hasil.daftar, ['s1']);
+      expect(hasil.posisi, -1);
+    });
+
+    test('sisipkanKembali mengembalikan ke posisi semula, tanpa dobel', () {
+      expect(sisipkanKembali(['s1', 's3'], 's2', 1), ['s1', 's2', 's3']);
+      expect(sisipkanKembali(['s1', 's2'], 's2', 0), ['s1', 's2']);
+      // Posisi di luar batas dipotong ke ujung daftar.
+      expect(sisipkanKembali(['s1'], 's2', 9), ['s1', 's2']);
+    });
+
+    testWidgets('geser kartu menghapus dari simpanan, Urungkan mengembalikannya',
+        (tester) async {
+      DummyData.toggleSimpanSirkel('s1');
+      DummyData.toggleSimpanSirkel('s2');
+      await pasang(tester, const SimpananScreen());
+
+      // Kartu teratas = terakhir disimpan (s2). Geser ke kiri sampai terhapus.
+      await tester.drag(
+        find.text('Tree & Graph'),
+        const Offset(-600, 0),
+      );
+      await tester.pumpAndSettle();
+
+      expect(DummyData.idSirkelDisimpan, ['s1']);
+      expect(find.text(ProfilStrings.sirkelDihapus), findsOneWidget);
+
+      await tester.tap(find.text(ProfilStrings.urungkan));
+      await tester.pumpAndSettle();
+
+      expect(DummyData.idSirkelDisimpan, ['s1', 's2']);
+      expect(find.text('Tree & Graph'), findsOneWidget);
     });
   });
 }

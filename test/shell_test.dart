@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sirkel_mobile/core/theme/app_theme.dart';
 import 'package:sirkel_mobile/data/dummy/dummy_data.dart';
+import 'package:sirkel_mobile/data/models/notifikasi.dart';
 import 'package:sirkel_mobile/data/models/sesi.dart';
 import 'package:sirkel_mobile/features/beranda/beranda_screen.dart';
 import 'package:sirkel_mobile/features/beranda/beranda_strings.dart';
@@ -415,6 +416,84 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  group('Iterasi 4: filter & geser di Notifikasi', () {
+    test('kategoriDari mengelompokkan jenis notifikasi', () {
+      expect(kategoriDari(JenisNotifikasi.sesi), KategoriNotifikasi.sesi);
+      expect(kategoriDari(JenisNotifikasi.jadwal), KategoriNotifikasi.sesi);
+      expect(kategoriDari(JenisNotifikasi.diterima), KategoriNotifikasi.sirkel);
+      expect(kategoriDari(JenisNotifikasi.materi), KategoriNotifikasi.sirkel);
+      expect(kategoriDari(JenisNotifikasi.lencana), KategoriNotifikasi.akun);
+      expect(kategoriDari(JenisNotifikasi.mentor), KategoriNotifikasi.akun);
+    });
+
+    test('saringNotifikasi "Akun" hanya berisi lencana dan mentor', () {
+      DummyData.ajukanMentor();
+      final akun = saringNotifikasi(DummyData.notifikasi, KategoriNotifikasi.akun);
+
+      expect(akun, isNotEmpty);
+      expect(
+        akun.every((n) =>
+            n.jenis == JenisNotifikasi.lencana ||
+            n.jenis == JenisNotifikasi.mentor),
+        isTrue,
+      );
+    });
+
+    test('jumlah belum dibaca per kategori dijumlah sama dengan "Semua"', () {
+      final daftar = DummyData.notifikasi;
+      final total = jumlahBelumDibaca(daftar, KategoriNotifikasi.semua);
+      final perKategori = [
+        KategoriNotifikasi.sesi,
+        KategoriNotifikasi.sirkel,
+        KategoriNotifikasi.akun,
+      ].map((k) => jumlahBelumDibaca(daftar, k)).reduce((a, b) => a + b);
+
+      expect(perKategori, total);
+    });
+
+    Future<void> pasangNotifikasi(WidgetTester tester) async {
+      aturUkuran(tester, const Size(360, 800));
+      await tester.pumpWidget(
+        MaterialApp(theme: AppTheme.light(), home: const NotifikasiScreen()),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('chip "Sirkel" menyembunyikan notifikasi lencana', (tester) async {
+      await pasangNotifikasi(tester);
+      expect(find.textContaining('Rajin Hadir'), findsOneWidget);
+
+      final labelSirkel = NotifikasiStrings.labelKategori(
+        KategoriNotifikasi.sirkel,
+        jumlahBelumDibaca(DummyData.notifikasi, KategoriNotifikasi.sirkel),
+      );
+      // Deretan chip bisa digulir ke samping; pastikan chip terlihat dulu.
+      final chipSirkel = find.widgetWithText(ChoiceChip, labelSirkel);
+      await tester.ensureVisible(chipSirkel);
+      await tester.pumpAndSettle();
+      await tester.tap(chipSirkel);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Rajin Hadir'), findsNothing);
+      expect(find.textContaining('Cheat Sheet'), findsOneWidget);
+    });
+
+    testWidgets('geser notifikasi ke kanan menandainya sudah dibaca',
+        (tester) async {
+      await pasangNotifikasi(tester);
+      bool belumDibaca() =>
+          DummyData.notifikasi.firstWhere((n) => n.id == 'n2').belumDibaca;
+      expect(belumDibaca(), isTrue);
+
+      await tester.drag(find.textContaining('Cheat Sheet'), const Offset(500, 0));
+      await tester.pumpAndSettle();
+
+      expect(belumDibaca(), isFalse);
+      // Item tidak hilang, hanya status bacanya yang berubah.
+      expect(find.textContaining('Cheat Sheet'), findsOneWidget);
     });
   });
 }
