@@ -462,9 +462,9 @@ class DummyData {
   /// pengingat sesi terdekat (bila ada) → notifikasi tambahan → notifikasi statis.
   /// Status dibaca diambil dari [_notifikasiDibaca] dan [_pengingatDibaca].
   static List<Notifikasi> notifikasiSejak(DateTime sekarang) {
-    final pengingat = _pengingatSesi(sekarang);
     return [
-      if (pengingat != null) pengingat,
+      // Null-aware element: pengingat hanya masuk daftar bila tidak null.
+      ?_pengingatSesi(sekarang),
       for (final n in [..._notifikasiTambahan, ..._notifikasiStatis])
         _notifikasiDibaca.contains(n.id) ? n.copyWith(belumDibaca: false) : n,
     ];
