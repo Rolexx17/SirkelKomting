@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_assets.dart';
 import '../models/app_user.dart';
-import '../models/lencana.dart';
 import '../models/materi.dart';
 import '../models/notifikasi.dart';
 import '../models/sesi.dart';
@@ -209,6 +208,24 @@ class DummyData {
       mode: ModeBelajar.offline,
       kuota: 6,
     ),
+    // Sengaja dijadwalkan Kamis 19.30, bertabrakan dengan Kalkulus I (Kamis
+    // 19.00–20.30) yang sudah diikuti, untuk fitur peringatan jadwal bentrok.
+    Sirkel(
+      id: 's7',
+      mataKuliah: 'Pemrograman Mobile',
+      judul: 'State Management',
+      deskripsi:
+          'Memahami setState, mengangkat state ke induk, dan kapan widget dibangun ulang.',
+      cover: AppAssets.coverMobile,
+      hari: 'Kamis',
+      jam: '19.30',
+      lokasi: 'Zoom',
+      level: levelBawaan,
+      mentor: _dimas,
+      anggota: [_bima, _rizky],
+      mode: ModeBelajar.online,
+      kuota: 6,
+    ),
   ];
 
   static const _diikutiAwal = ['s1', 's2', 's3'];
@@ -345,15 +362,9 @@ class DummyData {
     ),
   ];
 
-  // ---------------- Lencana & statistik ----------------
-  static const _lencana = [
-    Lencana(nama: 'Rajin Hadir', ikon: Icons.emoji_events),
-    Lencana(nama: 'Anggota Aktif', ikon: Icons.groups),
-    Lencana(nama: 'Pembagi Materi', ikon: Icons.menu_book),
-    Lencana(nama: 'Sesi Pertama', ikon: Icons.star),
-    Lencana(nama: 'Penanya Aktif', ikon: Icons.forum),
-  ];
-  static const _jumlahLencanaTerbaru = 4;
+  // ---------------- Statistik ----------------
+  // Lencana dan syaratnya dihitung di fitur Profil (lencana_progres.dart) dari
+  // data di kelas ini: sirkel diikuti, simpanan, jam belajar, dan status mentor.
   static const _jamBelajar = 24;
 
   // ---------------- State yang bisa berubah ----------------
@@ -379,8 +390,8 @@ class DummyData {
   /// Waktu pengguna aktif mengajukan diri jadi mentor; null = belum mengajukan.
   static DateTime? _waktuPengajuan;
 
-  /// Nomor id sirkel baru berikutnya (s7, s8, ...).
-  static int _nomorBerikut = 7;
+  /// Nomor id sirkel baru berikutnya (s8, s9, ...).
+  static int _nomorBerikut = 8;
 
   /// Nomor id notifikasi tambahan berikutnya (n-baru-1, n-baru-2, ...).
   static int _nomorNotifikasi = 1;
@@ -415,9 +426,6 @@ class DummyData {
   static List<Materi> get semuaMateri => _materi;
   static List<String> get daftarMataKuliah => _mataKuliah;
 
-  static List<Lencana> get semuaLencana => _lencana;
-  static List<Lencana> get lencanaTerbaru =>
-      _lencana.take(_jumlahLencanaTerbaru).toList();
   static int get jumlahJamBelajar => _jamBelajar;
 
   // ---------------- Jadwal ----------------
@@ -724,6 +732,21 @@ class DummyData {
   static List<Materi> get materiTersimpan =>
       _materiDisimpan.reversed.map(cariMateri).whereType<Materi>().toList();
 
+  /// Id yang disimpan sesuai urutan menyimpan (lama → baru). Dipakai halaman
+  /// Simpanan untuk menghapus dan mengurungkan hapus di posisi semula.
+  static List<String> get idSirkelDisimpan => List.unmodifiable(_sirkelDisimpan);
+  static List<String> get idMateriDisimpan => List.unmodifiable(_materiDisimpan);
+  static void aturSirkelDisimpan(List<String> ids) => _sirkelDisimpan = List.of(ids);
+  static void aturMateriDisimpan(List<String> ids) => _materiDisimpan = List.of(ids);
+
+  // ---------------- Riwayat pencarian Jelajah ----------------
+  // Disimpan di sini (bukan di state Jelajah) agar tetap ada walau tab Jelajah
+  // dibuat ulang. Aturan isinya ada di fitur Jelajah (perbaruiRiwayat).
+  static List<String> _riwayatPencarian = [];
+  static List<String> get riwayatPencarian => List.unmodifiable(_riwayatPencarian);
+  static void aturRiwayatPencarian(List<String> daftar) =>
+      _riwayatPencarian = List.of(daftar);
+
   // ---------------- Test ----------------
   /// Mengembalikan semua data ke kondisi awal. Data disimpan statis, jadi tanpa ini
   /// perubahan di satu test (misalnya gabung) ikut terbawa ke test berikutnya.
@@ -737,8 +760,9 @@ class DummyData {
     _pengingatDibaca = null;
     _sirkelDisimpan = [];
     _materiDisimpan = [];
+    _riwayatPencarian = [];
     _waktuPengajuan = null;
-    _nomorBerikut = 7;
+    _nomorBerikut = 8;
     _nomorNotifikasi = 1;
   }
 }

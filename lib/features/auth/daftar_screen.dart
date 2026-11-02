@@ -148,6 +148,12 @@ class _DaftarScreenState extends State<DaftarScreen> {
                 obscure: true,
                 validator: AuthValidator.kataSandi,
               ),
+              // Indikator kekuatan sandi ikut berubah setiap kali sandi diketik.
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _sandiController,
+                builder: (context, nilai, _) =>
+                    _IndikatorSandi(sandi: nilai.text),
+              ),
               const SizedBox(height: AppSizes.l),
               Text(
                 AuthStrings.daftarSebagai,
@@ -202,6 +208,48 @@ class _DaftarScreenState extends State<DaftarScreen> {
           onPressed: _setuju ? _buatAkun : null,
           child: const Text(AuthStrings.buatAkun),
         ),
+      ),
+    );
+  }
+}
+
+/// Bilah dan label kekuatan kata sandi; tidak tampil selama sandi masih kosong.
+class _IndikatorSandi extends StatelessWidget {
+  const _IndikatorSandi({required this.sandi});
+
+  final String sandi;
+
+  @override
+  Widget build(BuildContext context) {
+    if (sandi.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    // Satu tingkat → (porsi bilah, warna, label). Warna dari tema, bukan hex.
+    final (porsi, warna, label) = switch (AuthValidator.kekuatanSandi(sandi)) {
+      KekuatanSandi.lemah => (1 / 3, scheme.error, AuthStrings.sandiLemah),
+      KekuatanSandi.sedang => (2 / 3, scheme.tertiary, AuthStrings.sandiSedang),
+      KekuatanSandi.kuat => (1.0, scheme.primary, AuthStrings.sandiKuat),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator(
+            value: porsi,
+            color: warna,
+            backgroundColor: scheme.surfaceContainerHighest,
+          ),
+          const SizedBox(height: AppSizes.xs),
+          Text(label, style: text.labelMedium?.copyWith(color: warna)),
+          if (porsi < 1)
+            Text(
+              AuthStrings.saranSandi,
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+        ],
       ),
     );
   }

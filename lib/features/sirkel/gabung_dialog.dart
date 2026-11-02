@@ -111,14 +111,18 @@ class _GabungDialog extends StatelessWidget {
               style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppSizes.xl),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            // OverflowBar: tombol berdampingan bila muat, dan otomatis turun
+            // bertumpuk di layar sempit atau saat ukuran huruf diperbesar.
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              overflowAlignment: OverflowBarAlignment.end,
+              spacing: AppSizes.s,
+              overflowSpacing: AppSizes.s,
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text(SirkelStrings.nanti),
                 ),
-                const SizedBox(width: AppSizes.s),
                 FilledButton(
                   onPressed: () {
                     final nav = Navigator.of(context);

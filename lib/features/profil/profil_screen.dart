@@ -7,6 +7,7 @@ import '../../data/models/app_user.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/user_avatar.dart';
+import 'lencana_progres.dart';
 import 'profil_strings.dart';
 import 'simpanan_screen.dart';
 import 'widgets/lencana_item.dart';
@@ -131,8 +132,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 MediaQuery.orientationOf(context) == Orientation.landscape;
             final berdampingan = landscape ||
                 constraints.maxWidth >= Responsive.mediumBreakpoint;
-            final statistik = _kartuStatistik();
-            final lencana = _bagianLencana();
+            // Lencana dihitung sekali per build dari data terbaru (gabung, simpan,
+            // status mentor), lalu dipakai kartu statistik dan bagian lencana.
+            final progres = progresLencanaSaatIni();
+            final statistik = _kartuStatistik(progres);
+            final lencana = _bagianLencana(progres);
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(AppSizes.pagePadding),
@@ -230,7 +234,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  Widget _kartuStatistik() {
+  Widget _kartuStatistik(List<ProgresLencana> progres) {
     return Card(
       shape: _bentukKartu,
       child: Padding(
@@ -248,7 +252,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
             _pemisah(),
             _kolomStatistik(
-              '${DummyData.semuaLencana.length}',
+              '${progres.where((p) => p.didapat).length}',
               ProfilStrings.statLencana,
             ),
           ],
@@ -284,17 +288,19 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  Widget _bagianLencana() {
+  /// Empat lencana teratas: yang sudah didapat lebih dulu, lalu yang paling
+  /// dekat tercapai. Ketuk lencana untuk melihat syarat dan progresnya.
+  Widget _bagianLencana(List<ProgresLencana> progres) {
     final scheme = Theme.of(context).colorScheme;
-    final daftar = DummyData.lencanaTerbaru;
+    final daftar = progres.take(_jumlahLencanaDitampilkan).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader(
-          title: ProfilStrings.lencanaTerbaru,
+          title: ProfilStrings.lencanaJudul,
           actionLabel: ProfilStrings.semua,
-          onAction: () => showSemuaLencanaSheet(context),
+          onAction: _bukaSemuaLencana,
         ),
         const SizedBox(height: AppSizes.m),
         Row(
@@ -303,9 +309,15 @@ class _ProfilScreenState extends State<ProfilScreen> {
             for (final (i, item) in daftar.indexed)
               Expanded(
                 child: LencanaItem(
-                  lencana: item,
+                  progres: item,
                   latar: LencanaItem.warnaKe(scheme, i).$1,
                   warnaIkon: LencanaItem.warnaKe(scheme, i).$2,
+                  onTap: () => showDetailLencanaSheet(
+                    context,
+                    progres: item,
+                    latar: LencanaItem.warnaKe(scheme, i).$1,
+                    warnaIkon: LencanaItem.warnaKe(scheme, i).$2,
+                  ),
                 ),
               ),
           ],
@@ -313,6 +325,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
       ],
     );
   }
+
+  static const _jumlahLencanaDitampilkan = 4;
+
+  Future<void> _bukaSemuaLencana() => showSemuaLencanaSheet(context);
 
   Widget _menu() {
     final scheme = Theme.of(context).colorScheme;

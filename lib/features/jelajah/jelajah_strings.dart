@@ -1,3 +1,5 @@
+import 'filter_sheet.dart';
+
 /// Teks statis layar Jelajah dan bottom sheet Filter.
 class JelajahStrings {
   JelajahStrings._();
@@ -14,9 +16,18 @@ class JelajahStrings {
   static const kosongMingguIniPesan =
       'Matikan chip Minggu ini untuk melihat semua sirkel.';
   static const buatSirkel = 'Buat sirkel';
+  static const riwayatJudul = 'Pencarian terakhir';
+  static const hapusRiwayat = 'Hapus dari riwayat';
 
   // Filter
   static const filterJudul = 'Filter sirkel';
+  static const urutkan = 'Urutkan';
+  static String labelUrutan(UrutanSirkel u) => switch (u) {
+        UrutanSirkel.relevan => 'Paling sesuai',
+        UrutanSirkel.terdekat => 'Jadwal terdekat',
+        UrutanSirkel.kursiTerbanyak => 'Kursi terbanyak',
+        UrutanSirkel.ratingMentor => 'Rating mentor',
+      };
   static const mataKuliah = 'Mata kuliah';
   static const modeBelajar = 'Mode belajar';
   static const modeSemua = 'Semua';

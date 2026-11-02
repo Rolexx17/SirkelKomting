@@ -39,6 +39,14 @@ class _DetailSirkelScreenState extends State<DetailSirkelScreen> {
   }
 
   Future<void> _gabung(Sirkel sirkel) async {
+    // Cek bentrok dengan jadwal sirkel yang sudah diikuti. Bila bentrok, pengguna
+    // diberi tahu dulu dan boleh tetap gabung (misalnya hanya ikut sebagian sesi).
+    final bentrok = cariBentrok(sirkel, DummyData.sirkelDiikuti);
+    if (bentrok != null) {
+      final tetapGabung = await _konfirmasiBentrok(context, sirkel, bentrok);
+      if (tetapGabung != true) return;
+    }
+    if (!mounted) return;
     // Gabung mengubah data di memori: Nadia masuk anggota & sirkelDiikuti, kursi berkurang.
     DummyData.gabung(sirkel.id);
     setState(() {});
@@ -115,6 +123,47 @@ class _DetailSirkelScreenState extends State<DetailSirkelScreen> {
       ),
     );
   }
+}
+
+/// Dialog peringatan jadwal bentrok. Mengembalikan true bila "Tetap gabung" ditekan.
+Future<bool?> _konfirmasiBentrok(
+  BuildContext context,
+  Sirkel sirkel,
+  Sirkel bentrok,
+) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.event_busy),
+      title: const Text(SirkelStrings.bentrokJudul),
+      content: Text(
+        SirkelStrings.bentrokPesan(
+          judul: sirkel.judul,
+          jadwal: SirkelStrings.jadwalLengkap(
+            sirkel.hari,
+            sirkel.jam,
+            jamSelesai(sirkel.jam),
+          ),
+          judulBentrok: '${bentrok.mataKuliah} · ${bentrok.judul}',
+          jadwalBentrok: SirkelStrings.jadwalLengkap(
+            bentrok.hari,
+            bentrok.jam,
+            jamSelesai(bentrok.jam),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text(SirkelStrings.batal),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text(SirkelStrings.tetapGabung),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Dialog konfirmasi keluar. Mengembalikan true bila "Keluar" ditekan,

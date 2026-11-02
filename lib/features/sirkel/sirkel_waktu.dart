@@ -1,6 +1,8 @@
 // Fungsi bantu waktu untuk data sirkel. Data contoh menyimpan hari ("Kamis")
 // dan jam ("19.00") sebagai teks, jadi perlu diubah ke angka untuk dihitung.
 
+import '../../data/models/sirkel.dart';
+
 /// Lama satu sesi (menit). Data contoh tidak punya jam selesai; mockup memakai 19.00–20.30.
 const durasiSesiMenit = 90;
 
@@ -36,4 +38,29 @@ String tulisJam(int menit) {
 String jamSelesai(String jamMulai) {
   final mulai = bacaJam(jamMulai);
   return mulai == null ? jamMulai : tulisJam(mulai + durasiSesiMenit);
+}
+
+/// Mencari sirkel di [diikuti] yang jadwalnya bertabrakan dengan [target].
+///
+/// Dua sesi bentrok bila (1) ada hari yang sama, termasuk sirkel multi-hari
+/// seperti "Senin & Rabu", dan (2) rentang jamnya tumpang tindih:
+/// mulaiA < selesaiB dan mulaiB < selesaiA (selesai = mulai + [durasiSesiMenit]).
+/// Sesi yang berurutan pas (selesai 20.30, berikutnya mulai 20.30) tidak dihitung bentrok.
+/// Mengembalikan sirkel pertama yang bentrok, atau null bila aman.
+Sirkel? cariBentrok(Sirkel target, Iterable<Sirkel> diikuti) {
+  final mulaiTarget = bacaJam(target.jam);
+  if (mulaiTarget == null) return null;
+  final hariTarget = target.daftarNomorHari;
+
+  for (final s in diikuti) {
+    if (s.id == target.id) continue;
+    final mulai = bacaJam(s.jam);
+    if (mulai == null) continue;
+
+    final hariSama = s.daftarNomorHari.any(hariTarget.contains);
+    final tumpangTindih = mulaiTarget < mulai + durasiSesiMenit &&
+        mulai < mulaiTarget + durasiSesiMenit;
+    if (hariSama && tumpangTindih) return s;
+  }
+  return null;
 }

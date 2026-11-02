@@ -20,6 +20,8 @@ import 'jelajah_strings.dart';
 /// - [mingguIni]: hanya sirkel yang punya hari sesi dari hari ini sampai Minggu
 ///   (memakai semua hari di `daftarNomorHari`), diurutkan dari sesi terdekat.
 ///   [hariIni] bisa diisi tanggal tetap saat pengujian.
+/// - `filter.urutan`: urutan hasil (jadwal terdekat, kursi terbanyak, rating mentor).
+///   Bila "Paling sesuai" dan [mingguIni] aktif, hasil diurutkan dari sesi terdekat.
 List<Sirkel> saringSirkel(
   List<Sirkel> sumber, {
   String kataKunci = '',
@@ -42,17 +44,41 @@ List<Sirkel> saringSirkel(
     return filter.cocok(s);
   }).toList();
 
-  if (!mingguIni) return hasil;
+  // Nilai pengurut tiap sirkel: makin kecil, makin atas. null = urutan data apa adanya.
+  final int Function(Sirkel)? nilaiUrut = switch (filter.urutan) {
+    UrutanSirkel.relevan =>
+      mingguIni ? (Sirkel s) => _menitMenujuSesi(s, nomorHariIni) : null,
+    UrutanSirkel.terdekat =>
+      (Sirkel s) => _menitKeSesiBerikutnya(s, nomorHariIni),
+    // Dinegatifkan agar yang terbesar (kursi/rating) berada di atas.
+    UrutanSirkel.kursiTerbanyak => (Sirkel s) => -s.sisaKursi,
+    UrutanSirkel.ratingMentor =>
+      (Sirkel s) => -((s.mentor.rating ?? 0) * 10).round(),
+  };
+  if (nilaiUrut == null) return hasil;
 
-  // Urutkan dari sesi terdekat. Indeks asal dipakai sebagai penentu terakhir
-  // supaya sirkel dengan jarak sama selalu tampil dengan urutan yang sama.
+  // Indeks asal dipakai sebagai penentu terakhir supaya sirkel dengan nilai sama
+  // selalu tampil dengan urutan yang sama (List.sort tidak dijamin stabil).
   final urut = [
     for (var i = 0; i < hasil.length; i++)
-      (sirkel: hasil[i], jarak: _menitMenujuSesi(hasil[i], nomorHariIni), asal: i),
-  ]..sort((a, b) => a.jarak != b.jarak
-      ? a.jarak.compareTo(b.jarak)
+      (sirkel: hasil[i], nilai: nilaiUrut(hasil[i]), asal: i),
+  ]..sort((a, b) => a.nilai != b.nilai
+      ? a.nilai.compareTo(b.nilai)
       : a.asal.compareTo(b.asal));
   return [for (final u in urut) u.sirkel];
+}
+
+/// Jarak (menit) dari awal hari ini ke sesi berikutnya [s], berputar ke minggu
+/// depan bila harinya sudah lewat: selisih hari (0–6) × 1440 + jam mulai.
+/// Operator % di Dart selalu positif untuk pembagi positif, jadi Senin dari
+/// Kamis = (1 − 4) % 7 = 4 hari lagi.
+int _menitKeSesiBerikutnya(Sirkel s, int nomorHariIni) {
+  var selisihHari = DateTime.daysPerWeek;
+  for (final n in s.daftarNomorHari) {
+    final selisih = (n - nomorHariIni) % DateTime.daysPerWeek;
+    if (selisih < selisihHari) selisihHari = selisih;
+  }
+  return selisihHari * Duration.minutesPerDay + (bacaJam(s.jam) ?? 0);
 }
 
 /// Jarak (menit) dari awal hari ini ke sesi terdekat [s] di minggu ini:
@@ -65,6 +91,25 @@ int _menitMenujuSesi(Sirkel s, int nomorHariIni) {
     }
   }
   return selisihHari * Duration.minutesPerDay + (bacaJam(s.jam) ?? 0);
+}
+
+/// Batas jumlah kata kunci yang disimpan di riwayat pencarian.
+const maksRiwayatPencarian = 5;
+
+/// Memperbarui riwayat pencarian dengan [kata] baru:
+/// - spasi di awal/akhir dibuang, dan kata kosong diabaikan;
+/// - kata yang sama (tidak peka huruf besar/kecil) tidak dobel, tetapi dipindah
+///   ke paling atas memakai penulisan terbaru;
+/// - hanya [maks] kata terbaru yang disimpan.
+List<String> perbaruiRiwayat(
+  List<String> lama,
+  String kata, {
+  int maks = maksRiwayatPencarian,
+}) {
+  final bersih = kata.trim();
+  if (bersih.isEmpty) return List.of(lama);
+  final lain = lama.where((k) => k.toLowerCase() != bersih.toLowerCase());
+  return [bersih, ...lain].take(maks).toList();
 }
 
 /// Tab Jelajah: pencarian, chip filter cepat, filter lengkap, dan daftar/grid sirkel.
@@ -132,6 +177,30 @@ class _JelajahScreenState extends State<JelajahScreen> {
     if (mounted) setState(() {});
   }
 
+  /// Menyimpan kata kunci saat ini ke riwayat (dipanggil saat Enter ditekan
+  /// atau saat kartu hasil pencarian dibuka).
+  void _catatPencarian() {
+    DummyData.aturRiwayatPencarian(
+      perbaruiRiwayat(DummyData.riwayatPencarian, _cari.text),
+    );
+  }
+
+  /// Mengetuk chip riwayat: kata kunci dipakai lagi dan naik ke paling atas.
+  void _pakaiRiwayat(String kata) {
+    setState(() {
+      _cari.text = kata;
+      _catatPencarian();
+    });
+  }
+
+  void _hapusRiwayat(String kata) {
+    setState(() {
+      DummyData.aturRiwayatPencarian(
+        DummyData.riwayatPencarian.where((k) => k != kata).toList(),
+      );
+    });
+  }
+
   void _pilihSemua() => setState(() {
         _filter = const FilterSirkel();
         _mingguIni = false;
@@ -194,6 +263,10 @@ class _JelajahScreenState extends State<JelajahScreen> {
               ),
               sliver: SliverToBoxAdapter(child: _buildHeader(context)),
             ),
+            // Riwayat hanya tampil saat kolom pencarian kosong.
+            if (_cari.text.trim().isEmpty &&
+                DummyData.riwayatPencarian.isNotEmpty)
+              SliverToBoxAdapter(child: _buildRiwayat(context)),
             SliverToBoxAdapter(child: _buildChips()),
             const SliverToBoxAdapter(child: SizedBox(height: AppSizes.m)),
             if (hasil.isEmpty)
@@ -231,10 +304,11 @@ class _JelajahScreenState extends State<JelajahScreen> {
                       sirkel: hasil[i],
                       compact: compactCard,
                       // Kirim id sebagai argumen route; Detail mengambil datanya sendiri.
-                      onTap: () => _buka(
-                        AppRoutes.detailSirkel,
-                        arguments: hasil[i].id,
-                      ),
+                      onTap: () {
+                        // Kata kunci yang berhasil menemukan sirkel ikut dicatat.
+                        _catatPencarian();
+                        _buka(AppRoutes.detailSirkel, arguments: hasil[i].id);
+                      },
                     ),
                     childCount: hasil.length,
                   ),
@@ -264,6 +338,7 @@ class _JelajahScreenState extends State<JelajahScreen> {
       ],
       // Pencarian langsung: setiap ketikan membangun ulang daftar.
       onChanged: (_) => setState(() {}),
+      onSubmitted: (_) => setState(_catatPencarian),
     );
 
     // P7: di layar lebar judul dan SearchBar sejajar (mockup 16_tablet).
@@ -283,6 +358,44 @@ class _JelajahScreenState extends State<JelajahScreen> {
         const SizedBox(height: AppSizes.m),
         cari,
       ],
+    );
+  }
+
+  /// Deretan InputChip riwayat pencarian: ketuk untuk mencari lagi, × untuk menghapus.
+  Widget _buildRiwayat(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.pagePadding,
+        0,
+        AppSizes.pagePadding,
+        AppSizes.m,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            JelajahStrings.riwayatJudul,
+            style: text.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSizes.s),
+          Wrap(
+            spacing: AppSizes.s,
+            runSpacing: AppSizes.s,
+            children: [
+              for (final kata in DummyData.riwayatPencarian)
+                InputChip(
+                  label: Text(kata),
+                  onPressed: () => _pakaiRiwayat(kata),
+                  onDeleted: () => _hapusRiwayat(kata),
+                  deleteButtonTooltipMessage: JelajahStrings.hapusRiwayat,
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

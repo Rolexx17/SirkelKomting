@@ -9,6 +9,34 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/user_avatar.dart';
 import 'notifikasi_strings.dart';
 
+/// Kategori filter di layar Notifikasi. Satu kategori mencakup beberapa jenis.
+enum KategoriNotifikasi { semua, sesi, sirkel, akun }
+
+/// Kategori sebuah jenis notifikasi: sesi & jadwal → Sesi, diterima & materi
+/// → Sirkel, lencana & mentor → Akun.
+KategoriNotifikasi kategoriDari(JenisNotifikasi jenis) => switch (jenis) {
+      JenisNotifikasi.sesi || JenisNotifikasi.jadwal => KategoriNotifikasi.sesi,
+      JenisNotifikasi.diterima ||
+      JenisNotifikasi.materi =>
+        KategoriNotifikasi.sirkel,
+      JenisNotifikasi.lencana ||
+      JenisNotifikasi.mentor =>
+        KategoriNotifikasi.akun,
+    };
+
+/// Notifikasi yang termasuk [kategori]; "Semua" mengembalikan seluruh daftar.
+List<Notifikasi> saringNotifikasi(
+  List<Notifikasi> daftar,
+  KategoriNotifikasi kategori,
+) {
+  if (kategori == KategoriNotifikasi.semua) return daftar;
+  return daftar.where((n) => kategoriDari(n.jenis) == kategori).toList();
+}
+
+/// Jumlah notifikasi belum dibaca di [kategori], untuk angka di chip filter.
+int jumlahBelumDibaca(List<Notifikasi> daftar, KategoriNotifikasi kategori) =>
+    saringNotifikasi(daftar, kategori).where((n) => n.belumDibaca).length;
+
 /// Layar Notifikasi: daftar kabar per grup ("Hari ini", "Minggu ini")
 /// dengan status belum dibaca yang disimpan di DummyData.
 class NotifikasiScreen extends StatefulWidget {
@@ -39,6 +67,15 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
   static const _radiusLencana = 14.0;
   static const _ukuranTitik = 8.0;
 
+  KategoriNotifikasi _kategori = KategoriNotifikasi.semua;
+
+  /// Geser ke kanan pada notifikasi belum dibaca = tandai dibaca. Item tidak
+  /// dihapus (confirmDismiss mengembalikan false), hanya status bacanya berubah.
+  Future<bool> _geserTandaiDibaca(Notifikasi n) async {
+    setState(() => DummyData.tandaiNotifikasiDibaca(n.id));
+    return false;
+  }
+
   void _tandaiSemuaDibaca() {
     // Status disimpan di DummyData (bukan salinan lokal), sehingga Badge lonceng
     // di Beranda ikut hilang setelah kembali.
@@ -63,8 +100,9 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final daftar = DummyData.notifikasi;
+    final semua = DummyData.notifikasi;
     final adaBelumDibaca = DummyData.adaNotifikasiBaru;
+    final daftar = saringNotifikasi(semua, _kategori);
 
     // Urutan grup mengikuti urutan kemunculan di data ("Hari ini" lalu "Minggu ini").
     final grup = <String>[];
@@ -91,7 +129,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                 const SizedBox(width: AppSizes.s),
               ],
             ),
-            body: daftar.isEmpty
+            body: semua.isEmpty
                 ? const Padding(
                     padding: EdgeInsets.all(AppSizes.pagePadding),
                     child: EmptyState(
@@ -103,6 +141,15 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                 : ListView(
                     padding: const EdgeInsets.only(bottom: AppSizes.pagePadding),
                     children: [
+                      _filterKategori(semua),
+                      if (daftar.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(AppSizes.pagePadding),
+                          child: EmptyState(
+                            title: NotifikasiStrings.kategoriKosongJudul,
+                            message: NotifikasiStrings.kategoriKosongPesan,
+                          ),
+                        ),
                       for (final g in grup) ...[
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
@@ -118,13 +165,71 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                           ),
                         ),
                         for (final n in daftar.where((x) => x.grup == g))
-                          _item(context, n),
+                          _itemBisaDigeser(context, n),
                       ],
                     ],
                   ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Deretan ChoiceChip kategori; angka di label = jumlah belum dibaca.
+  Widget _filterKategori(List<Notifikasi> semua) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.pagePadding,
+        AppSizes.s,
+        AppSizes.pagePadding,
+        0,
+      ),
+      child: Row(
+        spacing: AppSizes.s,
+        children: [
+          for (final k in KategoriNotifikasi.values)
+            ChoiceChip(
+              label: Text(
+                NotifikasiStrings.labelKategori(k, jumlahBelumDibaca(semua, k)),
+              ),
+              selected: _kategori == k,
+              onSelected: (_) => setState(() => _kategori = k),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Item notifikasi yang bisa digeser ke kanan untuk ditandai dibaca.
+  Widget _itemBisaDigeser(BuildContext context, Notifikasi n) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Dismissible(
+      key: ValueKey('notifikasi-${n.id}'),
+      // Yang sudah dibaca tidak perlu digeser lagi.
+      direction: n.belumDibaca
+          ? DismissDirection.startToEnd
+          : DismissDirection.none,
+      confirmDismiss: (_) => _geserTandaiDibaca(n),
+      background: Container(
+        color: scheme.primaryContainer,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.pagePadding),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.done_all, color: scheme.onPrimaryContainer),
+            const SizedBox(width: AppSizes.s),
+            Text(
+              NotifikasiStrings.geserDibaca,
+              style: text.labelLarge?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+          ],
+        ),
+      ),
+      child: _item(context, n),
     );
   }
 

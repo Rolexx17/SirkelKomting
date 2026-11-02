@@ -11,6 +11,31 @@ import 'profil_strings.dart';
 
 enum _Tab { sirkel, materi }
 
+/// Menghapus [id] dari [daftar]. Mengembalikan daftar baru dan posisi asal [id]
+/// (-1 bila tidak ada). Posisi disimpan supaya "Urungkan" bisa mengembalikan item
+/// tepat ke tempatnya semula, bukan ke paling atas.
+({List<String> daftar, int posisi}) hapusDariDaftar(
+  List<String> daftar,
+  String id,
+) {
+  final posisi = daftar.indexOf(id);
+  if (posisi == -1) return (daftar: List.of(daftar), posisi: -1);
+  final baru = [...daftar]..removeAt(posisi);
+  return (daftar: baru, posisi: posisi);
+}
+
+/// Menyisipkan [id] kembali ke [posisi] (dibatasi 0 sampai panjang daftar).
+/// Diabaikan bila [id] sudah ada, misalnya "Urungkan" ditekan dua kali.
+List<String> sisipkanKembali(List<String> daftar, String id, int posisi) {
+  if (daftar.contains(id)) return List.of(daftar);
+  final aman = posisi < 0
+      ? 0
+      : posisi > daftar.length
+          ? daftar.length
+          : posisi;
+  return [...daftar]..insert(aman, id);
+}
+
 /// Halaman Simpanan: sirkel dan materi yang disimpan pengguna, dibuka dari menu Profil.
 class SimpananScreen extends StatefulWidget {
   const SimpananScreen({super.key});
@@ -27,6 +52,65 @@ class _SimpananScreenState extends State<SimpananScreen> {
   Future<void> _buka(String route, String id) async {
     await Navigator.of(context).pushNamed(route, arguments: id);
     if (mounted) setState(() {});
+  }
+
+  List<String> _idTersimpan({required bool sirkel}) =>
+      sirkel ? DummyData.idSirkelDisimpan : DummyData.idMateriDisimpan;
+
+  void _aturTersimpan(List<String> ids, {required bool sirkel}) {
+    if (sirkel) {
+      DummyData.aturSirkelDisimpan(ids);
+    } else {
+      DummyData.aturMateriDisimpan(ids);
+    }
+  }
+
+  /// Dipanggil setelah kartu digeser: hapus dari simpanan, lalu tawarkan Urungkan.
+  void _hapus(String id, {required bool sirkel}) {
+    final hasil = hapusDariDaftar(_idTersimpan(sirkel: sirkel), id);
+    if (hasil.posisi == -1) return;
+    _aturTersimpan(hasil.daftar, sirkel: sirkel);
+    setState(() {});
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            sirkel ? ProfilStrings.sirkelDihapus : ProfilStrings.materiDihapus,
+          ),
+          action: SnackBarAction(
+            label: ProfilStrings.urungkan,
+            onPressed: () {
+              _aturTersimpan(
+                sisipkanKembali(_idTersimpan(sirkel: sirkel), id, hasil.posisi),
+                sirkel: sirkel,
+              );
+              if (mounted) setState(() {});
+            },
+          ),
+        ),
+      );
+  }
+
+  /// Membungkus kartu dengan Dismissible: geser ke kiri untuk menghapus.
+  Widget _bisaDigeser(Widget kartu, String id, {required bool sirkel}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Dismissible(
+      key: ValueKey(sirkel ? 'sirkel-$id' : 'materi-$id'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.l),
+        decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        ),
+        child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
+      ),
+      onDismissed: (_) => _hapus(id, sirkel: sirkel),
+      child: kartu,
+    );
   }
 
   @override
@@ -56,25 +140,39 @@ class _SimpananScreenState extends State<SimpananScreen> {
                     constraints: const BoxConstraints(
                       maxWidth: AppSizes.maxContentWidth,
                     ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<_Tab>(
-                        segments: [
-                          ButtonSegment(
-                            value: _Tab.sirkel,
-                            icon: const Icon(Icons.groups),
-                            label: Text(ProfilStrings.tabSirkel(sirkel.length)),
-                          ),
-                          ButtonSegment(
-                            value: _Tab.materi,
-                            icon: const Icon(Icons.menu_book),
-                            label: Text(ProfilStrings.tabMateri(materi.length)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SegmentedButton<_Tab>(
+                          segments: [
+                            ButtonSegment(
+                              value: _Tab.sirkel,
+                              icon: const Icon(Icons.groups),
+                              label: Text(ProfilStrings.tabSirkel(sirkel.length)),
+                            ),
+                            ButtonSegment(
+                              value: _Tab.materi,
+                              icon: const Icon(Icons.menu_book),
+                              label: Text(ProfilStrings.tabMateri(materi.length)),
+                            ),
+                          ],
+                          selected: {_tab},
+                          onSelectionChanged: (pilihan) =>
+                              setState(() => _tab = pilihan.first),
+                        ),
+                        if (!kosong) ...[
+                          const SizedBox(height: AppSizes.s),
+                          Text(
+                            ProfilStrings.petunjukGeser,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                           ),
                         ],
-                        selected: {_tab},
-                        onSelectionChanged: (pilihan) =>
-                            setState(() => _tab = pilihan.first),
-                      ),
+                      ],
                     ),
                   ),
                 ),
@@ -138,10 +236,14 @@ class _SimpananScreenState extends State<SimpananScreen> {
         mainAxisExtent: tinggiSel,
       ),
       delegate: SliverChildBuilderDelegate(
-        (context, i) => SirkelCard(
-          sirkel: daftar[i],
-          compact: compact,
-          onTap: () => _buka(AppRoutes.detailSirkel, daftar[i].id),
+        (context, i) => _bisaDigeser(
+          SirkelCard(
+            sirkel: daftar[i],
+            compact: compact,
+            onTap: () => _buka(AppRoutes.detailSirkel, daftar[i].id),
+          ),
+          daftar[i].id,
+          sirkel: true,
         ),
         childCount: daftar.length,
       ),
@@ -163,9 +265,13 @@ class _SimpananScreenState extends State<SimpananScreen> {
         mainAxisExtent: tinggiSel,
       ),
       delegate: SliverChildBuilderDelegate(
-        (context, i) => MateriCard(
-          materi: daftar[i],
-          onTap: () => _buka(AppRoutes.detailMateri, daftar[i].id),
+        (context, i) => _bisaDigeser(
+          MateriCard(
+            materi: daftar[i],
+            onTap: () => _buka(AppRoutes.detailMateri, daftar[i].id),
+          ),
+          daftar[i].id,
+          sirkel: false,
         ),
         childCount: daftar.length,
       ),

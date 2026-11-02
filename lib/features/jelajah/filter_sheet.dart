@@ -7,6 +7,10 @@ import '../sirkel/sirkel_strings.dart';
 import '../sirkel/sirkel_waktu.dart';
 import 'jelajah_strings.dart';
 
+/// Pilihan urutan hasil Jelajah. [relevan] = urutan bawaan data (sirkel yang baru
+/// diterbitkan di atas), kecuali chip "Minggu ini" aktif yang mengurutkan dari sesi terdekat.
+enum UrutanSirkel { relevan, terdekat, kursiTerbanyak, ratingMentor }
+
 /// Pilihan filter sirkel. Kosong/null berarti "tidak menyaring" untuk bagian itu.
 class FilterSirkel {
   const FilterSirkel({
@@ -14,6 +18,7 @@ class FilterSirkel {
     this.mode,
     this.hari = const {},
     this.hanyaAdaKursi = false,
+    this.urutan = UrutanSirkel.relevan,
   });
 
   final Set<String> mataKuliah;
@@ -22,6 +27,9 @@ class FilterSirkel {
   /// Kode hari, misalnya {'Kam', 'Sab'} (lihat [JelajahStrings.daftarHari]).
   final Set<String> hari;
   final bool hanyaAdaKursi;
+
+  /// Urutan hasil; bukan penyaring, jadi tidak dihitung di [aktif].
+  final UrutanSirkel urutan;
 
   bool get aktif =>
       mataKuliah.isNotEmpty || mode != null || hari.isNotEmpty || hanyaAdaKursi;
@@ -32,6 +40,7 @@ class FilterSirkel {
         mode: modeBaru,
         hari: hari,
         hanyaAdaKursi: hanyaAdaKursi,
+        urutan: urutan,
       );
 
   /// true bila [s] lolos semua syarat filter. Syarat yang kosong dilewati.
@@ -83,6 +92,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   late _PilihanMode _mode;
   late Set<String> _hari;
   late bool _hanyaAdaKursi;
+  late UrutanSirkel _urutan;
 
   @override
   void initState() {
@@ -91,6 +101,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     _mataKuliah = {...widget.awal.mataKuliah};
     _hari = {...widget.awal.hari};
     _hanyaAdaKursi = widget.awal.hanyaAdaKursi;
+    _urutan = widget.awal.urutan;
     _mode = switch (widget.awal.mode) {
       ModeBelajar.online => _PilihanMode.online,
       ModeBelajar.offline => _PilihanMode.offline,
@@ -107,6 +118,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         },
         hari: _hari,
         hanyaAdaKursi: _hanyaAdaKursi,
+        urutan: _urutan,
       );
 
   void _reset() {
@@ -115,6 +127,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       _mode = _PilihanMode.semua;
       _hari = {};
       _hanyaAdaKursi = false;
+      _urutan = UrutanSirkel.relevan;
     });
   }
 
@@ -157,6 +170,22 @@ class _FilterSheetState extends State<_FilterSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(JelajahStrings.filterJudul, style: text.titleLarge),
+                  const SizedBox(height: AppSizes.l),
+                  Text(JelajahStrings.urutkan, style: labelStyle),
+                  const SizedBox(height: AppSizes.s),
+                  // ChoiceChip: hanya satu urutan yang bisa dipilih.
+                  Wrap(
+                    spacing: AppSizes.s,
+                    runSpacing: AppSizes.s,
+                    children: [
+                      for (final u in UrutanSirkel.values)
+                        ChoiceChip(
+                          label: Text(JelajahStrings.labelUrutan(u)),
+                          selected: _urutan == u,
+                          onSelected: (_) => setState(() => _urutan = u),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: AppSizes.l),
                   Text(JelajahStrings.mataKuliah, style: labelStyle),
                   const SizedBox(height: AppSizes.s),

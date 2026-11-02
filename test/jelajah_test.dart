@@ -10,6 +10,7 @@ import 'package:sirkel_mobile/features/jelajah/jelajah_strings.dart';
 import 'package:sirkel_mobile/features/sirkel/detail_sirkel_screen.dart';
 import 'package:sirkel_mobile/features/sirkel/gabung_dialog.dart';
 import 'package:sirkel_mobile/features/sirkel/sirkel_strings.dart';
+import 'package:sirkel_mobile/features/sirkel/sirkel_waktu.dart';
 import 'package:sirkel_mobile/shared/widgets/cover_image.dart';
 import 'package:sirkel_mobile/shared/widgets/sirkel_card.dart';
 
@@ -108,7 +109,7 @@ void main() {
 
     test('filter hari Kamis', () {
       final hasil = saringSirkel(semua, filter: const FilterSirkel(hari: {'Kam'}));
-      expect(idDari(hasil), ['s1']);
+      expect(idDari(hasil), unorderedEquals(['s1', 's7']));
     });
 
     test('"Minggu ini" dari hari Kamis menyisakan Kamis, Jumat, Sabtu', () {
@@ -117,7 +118,7 @@ void main() {
         mingguIni: true,
         hariIni: DateTime(2026, 10, 29), // Kamis
       );
-      expect(idDari(hasil), unorderedEquals(['s1', 's2', 's4']));
+      expect(idDari(hasil), unorderedEquals(['s1', 's7', 's2', 's4']));
     });
 
     test('"Hanya yang masih ada kursi" membuang sirkel penuh', () {
@@ -214,8 +215,8 @@ void main() {
         mingguIni: true,
         hariIni: DateTime(2026, 10, 29), // Kamis
       );
-      // Kamis (s1) → Jumat (s4) → Sabtu (s2).
-      expect(hasil.map((s) => s.id).toList(), ['s1', 's4', 's2']);
+      // Kamis 19.00 (s1) → Kamis 19.30 (s7) → Jumat (s4) → Sabtu (s2).
+      expect(hasil.map((s) => s.id).toList(), ['s1', 's7', 's4', 's2']);
     });
   });
 
@@ -348,6 +349,160 @@ void main() {
       DummyData.toggleSimpanSirkel('s1');
       await pasang(tester, kartu());
       expect(find.byIcon(Icons.bookmark), findsOneWidget);
+    });
+  });
+
+  group('Iterasi 4: urutan hasil Jelajah (unit test)', () {
+    final kamis = DateTime(2026, 10, 29);
+
+    test('Jadwal terdekat dari Kamis berputar ke minggu depan', () {
+      final hasil = saringSirkel(
+        DummyData.semuaSirkel,
+        filter: const FilterSirkel(urutan: UrutanSirkel.terdekat),
+        hariIni: kamis,
+      );
+      // Kamis 19.00 → Kamis 19.30 → Jumat → Sabtu → Senin → Selasa → Rabu.
+      expect(
+        hasil.map((s) => s.id).toList(),
+        ['s1', 's7', 's4', 's2', 's6', 's5', 's3'],
+      );
+    });
+
+    test('Kursi terbanyak: sisa kursi tidak pernah naik', () {
+      final hasil = saringSirkel(
+        DummyData.semuaSirkel,
+        filter: const FilterSirkel(urutan: UrutanSirkel.kursiTerbanyak),
+      );
+      for (var i = 1; i < hasil.length; i++) {
+        expect(hasil[i].sisaKursi, lessThanOrEqualTo(hasil[i - 1].sisaKursi));
+      }
+    });
+
+    test('Rating mentor: rating tidak pernah naik', () {
+      final hasil = saringSirkel(
+        DummyData.semuaSirkel,
+        filter: const FilterSirkel(urutan: UrutanSirkel.ratingMentor),
+      );
+      double rating(Sirkel s) => s.mentor.rating ?? 0;
+      for (var i = 1; i < hasil.length; i++) {
+        expect(rating(hasil[i]), lessThanOrEqualTo(rating(hasil[i - 1])));
+      }
+    });
+
+    test('urutan tidak mengubah isi hasil, hanya posisinya', () {
+      final biasa = saringSirkel(DummyData.semuaSirkel, kataKunci: 'data');
+      final urut = saringSirkel(
+        DummyData.semuaSirkel,
+        kataKunci: 'data',
+        filter: const FilterSirkel(urutan: UrutanSirkel.kursiTerbanyak),
+      );
+      expect(
+        urut.map((s) => s.id),
+        unorderedEquals(biasa.map((s) => s.id)),
+      );
+    });
+  });
+
+  group('Iterasi 4: jadwal bentrok (unit test)', () {
+    Sirkel sirkel(String id) => DummyData.cariSirkel(id)!;
+
+    test('State Management (Kamis 19.30) bentrok dengan Kalkulus I (Kamis 19.00)',
+        () {
+      expect(cariBentrok(sirkel('s7'), DummyData.sirkelDiikuti)?.id, 's1');
+    });
+
+    test('Statistika (Jumat 20.00) tidak bentrok dengan sirkel yang diikuti', () {
+      expect(cariBentrok(sirkel('s4'), DummyData.sirkelDiikuti), isNull);
+    });
+
+    test('sesi berurutan pas (mulai 20.30, saat Kalkulus selesai) tidak bentrok',
+        () {
+      final berurutan = sirkel('s7').copyWith(jam: '20.30');
+      expect(cariBentrok(berurutan, DummyData.sirkelDiikuti), isNull);
+    });
+
+    test('sirkel multi-hari "Senin & Kamis" 19.00 ikut terdeteksi bentrok', () {
+      final multiHari = sirkel('s6').copyWith(hari: 'Senin & Kamis', jam: '19.00');
+      expect(cariBentrok(multiHari, DummyData.sirkelDiikuti)?.id, 's1');
+    });
+  });
+
+  group('Iterasi 4: gabung dengan jadwal bentrok (widget test)', () {
+    Future<void> ketukGabung(WidgetTester tester) async {
+      await pasang(tester, const DetailSirkelScreen(sirkelId: 's7'));
+      await tester.tap(find.text(SirkelStrings.gabung));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('gabung s7 menampilkan peringatan; Batal tidak bergabung',
+        (tester) async {
+      await ketukGabung(tester);
+      expect(find.text(SirkelStrings.bentrokJudul), findsOneWidget);
+
+      await tester.tap(find.text(SirkelStrings.batal));
+      await tester.pumpAndSettle();
+
+      expect(DummyData.sudahGabung('s7'), isFalse);
+      expect(find.text(SirkelStrings.gabung), findsOneWidget);
+    });
+
+    testWidgets('"Tetap gabung" bergabung dan membuka dialog berhasil',
+        (tester) async {
+      await ketukGabung(tester);
+
+      await tester.tap(find.text(SirkelStrings.tetapGabung));
+      await tester.pumpAndSettle();
+
+      expect(DummyData.sudahGabung('s7'), isTrue);
+      expect(find.text(SirkelStrings.gabungJudul), findsOneWidget);
+    });
+
+    testWidgets('gabung sirkel tanpa bentrok langsung membuka dialog berhasil',
+        (tester) async {
+      await pasang(tester, const DetailSirkelScreen(sirkelId: 's4'));
+      await tester.tap(find.text(SirkelStrings.gabung));
+      await tester.pumpAndSettle();
+
+      expect(find.text(SirkelStrings.bentrokJudul), findsNothing);
+      expect(find.text(SirkelStrings.gabungJudul), findsOneWidget);
+    });
+  });
+
+  group('Iterasi 4: riwayat pencarian', () {
+    test('kata dirapikan, kata kosong diabaikan', () {
+      expect(perbaruiRiwayat([], '  Kalkulus '), ['Kalkulus']);
+      expect(perbaruiRiwayat(['data'], '   '), ['data']);
+    });
+
+    test('kata yang sama tidak dobel dan naik ke paling atas', () {
+      expect(perbaruiRiwayat(['data', 'Kalkulus'], 'kalkulus'), ['kalkulus', 'data']);
+    });
+
+    test('hanya 5 kata terbaru yang disimpan', () {
+      var riwayat = <String>[];
+      for (final kata in ['a', 'b', 'c', 'd', 'e', 'f']) {
+        riwayat = perbaruiRiwayat(riwayat, kata);
+      }
+      expect(riwayat, ['f', 'e', 'd', 'c', 'b']);
+    });
+
+    testWidgets('Enter mencatat riwayat; chip riwayat memakai kata itu lagi',
+        (tester) async {
+      await pasang(tester, const JelajahScreen());
+
+      await tester.enterText(find.byType(SearchBar), 'kalkulus');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      expect(DummyData.riwayatPencarian, ['kalkulus']);
+
+      // Kolom dikosongkan → chip riwayat muncul.
+      await tester.enterText(find.byType(SearchBar), '');
+      await tester.pump();
+      expect(find.widgetWithText(InputChip, 'kalkulus'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(InputChip, 'kalkulus'));
+      await tester.pump();
+      expect(find.byType(SirkelCard), findsOneWidget);
     });
   });
 }

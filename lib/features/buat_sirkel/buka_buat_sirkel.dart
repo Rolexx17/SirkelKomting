@@ -10,17 +10,17 @@ import 'buat_sirkel_strings.dart';
 /// mengajukan diri, dan yang pengajuannya masih ditinjau diberi tahu statusnya.
 /// Mengembalikan true bila form Buat Sirkel dibuka.
 Future<bool> bukaBuatSirkel(BuildContext context) async {
-  switch (DummyData.statusMentor) {
-    case StatusMentor.mentor:
-      await Navigator.of(context).pushNamed(AppRoutes.buatSirkel);
-      return true;
-    case StatusMentor.peserta:
-      await _tawarkanPengajuan(context);
-      return false;
-    case StatusMentor.menunggu:
-      await _infoDitinjau(context);
-      return false;
+  final status = DummyData.statusMentor;
+  if (status == StatusMentor.mentor) {
+    await Navigator.of(context).pushNamed(AppRoutes.buatSirkel);
+    return true;
   }
+  if (status == StatusMentor.peserta) {
+    await _tawarkanPengajuan(context);
+  } else {
+    await _infoDitinjau(context);
+  }
+  return false;
 }
 
 /// Dialog untuk peserta: jelaskan syaratnya, lalu tawarkan pengajuan mentor.
