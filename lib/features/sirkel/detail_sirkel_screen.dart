@@ -6,7 +6,6 @@ import '../../data/models/sirkel.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/cover_image.dart';
 import '../../shared/widgets/info_row.dart';
-import '../../shared/widgets/mode_badge.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/user_avatar.dart';
 import 'anggota_sheet.dart';
@@ -267,16 +266,17 @@ class _Konten extends StatelessWidget {
         const SizedBox(height: AppSizes.xs),
         Text(sirkel.judul, style: text.headlineSmall),
         const SizedBox(height: AppSizes.sm),
+        // P4: mode dan level memakai gaya Chip yang sama, cukup teks tanpa ikon.
         Wrap(
           spacing: AppSizes.s,
           runSpacing: AppSizes.s,
-          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            ModeBadge(mode: sirkel.mode),
             Chip(
-              avatar: const Icon(Icons.school_outlined),
-              label: Text(sirkel.level),
+              label: Text(
+                online ? SirkelStrings.online : SirkelStrings.offline,
+              ),
             ),
+            Chip(label: Text(sirkel.level)),
           ],
         ),
         const SizedBox(height: AppSizes.l),
@@ -289,32 +289,30 @@ class _Konten extends StatelessWidget {
           style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: AppSizes.l),
-        // P5: Container bergaris sudut 16 sebagai kotak informasi.
-        Container(
-          padding: const EdgeInsets.all(AppSizes.m),
-          decoration: BoxDecoration(
-            border: Border.all(color: scheme.outlineVariant),
-            borderRadius: BorderRadius.circular(AppSizes.radiusM),
-          ),
-          child: Column(
-            children: [
-              InfoRow(
-                icon: Icons.calendar_today_outlined,
-                label: SirkelStrings.jadwal,
-                value: SirkelStrings.jadwalLengkap(
-                  sirkel.hari,
-                  sirkel.jam,
-                  jamSelesai(sirkel.jam),
+        // P4: Card bergaya sama dengan kartu mentor, jadi semua blok info seragam.
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.m),
+            child: Column(
+              children: [
+                InfoRow(
+                  icon: Icons.calendar_today_outlined,
+                  label: SirkelStrings.jadwal,
+                  value: SirkelStrings.jadwalLengkap(
+                    sirkel.hari,
+                    sirkel.jam,
+                    jamSelesai(sirkel.jam),
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSizes.m),
-              InfoRow(
-                icon: online ? Icons.videocam : Icons.place,
-                label: SirkelStrings.lokasi,
-                value: sirkel.lokasi,
-                subtitle: _keteranganLokasi(online),
-              ),
-            ],
+                const SizedBox(height: AppSizes.m),
+                InfoRow(
+                  icon: online ? Icons.videocam : Icons.place,
+                  label: SirkelStrings.lokasi,
+                  value: sirkel.lokasi,
+                  subtitle: _keteranganLokasi(online),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: AppSizes.xl),
