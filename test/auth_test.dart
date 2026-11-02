@@ -142,7 +142,9 @@ void main() {
       final pengguna = DummyData.penggunaAktif;
       expect(pengguna.nama, 'Budi Santoso');
       expect(pengguna.prodi, 'Teknik Informatika');
-      expect(pengguna.isMentor, isTrue);
+      // Peran Mentor saat daftar = pengajuan, bukan langsung mentor.
+      expect(pengguna.isMentor, isFalse);
+      expect(DummyData.statusMentor, StatusMentor.menunggu);
       // akunBaru: avatar dikosongkan agar tampil inisial, bukan foto Nadia.
       expect(pengguna.avatar, isEmpty);
     });
