@@ -30,8 +30,12 @@ class AppSizes {
   static const sirkelCardBody = 144.0;
   static const detailHeader = 220.0;
 
-  /// P7: tinggi header Detail saat HP landscape (tinggi layar ±360 px).
+  /// P7: tinggi header Detail saat HP landscape (tinggi layar ±360–430 px).
   static const detailHeaderLandscape = 140.0;
+
+  /// P7: layar landscape dengan tinggi di bawah nilai ini dianggap HP landscape.
+  /// Tablet landscape dan desktop (misalnya 1280×800) tingginya ≥ 600.
+  static const tinggiMaksHpLandscape = 600.0;
   static const sheetMaxWidth = 640.0;
   static const fabSpace = 88.0;
   static const gabungIlustrasiW = 180.0, gabungIlustrasiH = 146.0;

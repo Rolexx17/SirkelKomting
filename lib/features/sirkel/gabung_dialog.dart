@@ -5,6 +5,7 @@ import '../../core/constants/app_sizes.dart';
 import '../../data/dummy/dummy_data.dart';
 import '../../data/models/sirkel.dart';
 import '../../routes/app_routes.dart';
+import 'sirkel_layout.dart';
 import 'sirkel_strings.dart';
 import 'sirkel_waktu.dart';
 
@@ -61,10 +62,9 @@ class _GabungDialog extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final online = sirkel.mode == ModeBelajar.online;
-    // P7: di landscape tinggi layar ±360 px, jadi ilustrasi disembunyikan
-    // supaya dialog muat tanpa digulir.
-    final landscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+    // P7: di HP landscape tinggi layar kecil, jadi ilustrasi disembunyikan supaya
+    // dialog muat tanpa digulir. Desktop/tablet tetap menampilkan ilustrasi.
+    final sembunyikanIlustrasi = landscapeHp(context);
 
     return Dialog(
       // Scroll hanya sebagai pengaman bila ukuran huruf diperbesar.
@@ -73,7 +73,7 @@ class _GabungDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!landscape) ...[
+            if (!sembunyikanIlustrasi) ...[
               Image.asset(
                 AppAssets.onboarding1,
                 width: AppSizes.gabungIlustrasiW,

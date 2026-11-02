@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_sizes.dart';
+import '../../data/dummy/dummy_data.dart';
 import '../../data/models/sirkel.dart';
 import '../../features/sirkel/sirkel_strings.dart';
 import 'avatar_stack.dart';
@@ -8,7 +9,7 @@ import 'cover_image.dart';
 import 'mode_badge.dart';
 import 'user_avatar.dart';
 
-/// Kartu ringkasan satu sirkel. Dipakai di Beranda, Jelajah, dan Sirkel Saya.
+/// Kartu ringkasan satu sirkel. Dipakai di Beranda, Jelajah, Sirkel Saya, dan Simpanan.
 class SirkelCard extends StatelessWidget {
   const SirkelCard({
     super.key,
@@ -45,7 +46,8 @@ class SirkelCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // P6: Stack menumpuk ModeBadge di kiri atas sampul.
+            // P6: Stack menumpuk ModeBadge di kiri atas dan penanda simpan
+            // di kanan atas sampul.
             Stack(
               children: [
                 CoverImage(
@@ -59,6 +61,13 @@ class SirkelCard extends StatelessWidget {
                   top: AppSizes.sm,
                   child: ModeBadge(mode: sirkel.mode),
                 ),
+                // Status simpan dibaca dari DummyData, jadi sama di semua layar.
+                if (DummyData.sirkelDisimpan(sirkel.id))
+                  const Positioned(
+                    right: AppSizes.sm,
+                    top: AppSizes.sm,
+                    child: _TandaSimpan(),
+                  ),
               ],
             ),
             Padding(
@@ -90,6 +99,7 @@ class SirkelCard extends StatelessWidget {
                     children: [
                       UserAvatar(
                         imagePath: sirkel.mentor.avatar,
+                        nama: sirkel.mentor.nama,
                         size: AppSizes.avatarS,
                       ),
                       const SizedBox(width: AppSizes.s),
@@ -141,6 +151,30 @@ class SirkelCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Ikon bookmark kecil bergaya sama dengan ModeBadge (latar surface 92%, sudut 8).
+class _TandaSimpan extends StatelessWidget {
+  const _TandaSimpan();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // P5: Container berhias sama seperti ModeBadge agar serasi.
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.xs),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(AppSizes.radiusS),
+      ),
+      child: Icon(
+        Icons.bookmark,
+        size: AppSizes.iconS,
+        color: scheme.primary,
+        semanticLabel: SirkelStrings.tandaDisimpan,
       ),
     );
   }
