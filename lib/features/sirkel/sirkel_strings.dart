@@ -10,6 +10,7 @@ class SirkelStrings {
   static String mentorSingkat(String namaDepan) => 'Mentor · $namaDepan';
   static String jadwalSingkat(String hari, String jam) => '$hari, $jam';
   static String kursi(int n) => '$n kursi';
+  static const tandaDisimpan = 'Disimpan';
 
   // Detail Sirkel
   static const kembali = 'Kembali';
@@ -44,6 +45,15 @@ class SirkelStrings {
   static const gabung = 'Gabung sirkel';
   static const sudahGabung = 'Sudah bergabung';
   static const kamuMentor = 'Kamu mentor sirkel ini';
+  static const kamuAnggota = 'Kamu anggota sirkel ini';
+  static const keluarSirkel = 'Keluar sirkel';
+  static const keluarBerhasil = 'Kamu keluar dari sirkel';
+
+  // Dialog konfirmasi keluar
+  static String keluarJudul(String judul) => 'Keluar dari $judul?';
+  static const keluarPesan = 'Jadwal sirkel ini akan dihapus dari Sirkel saya.';
+  static const batal = 'Batal';
+  static const keluar = 'Keluar';
   static const tidakDitemukan = 'Sirkel tidak ditemukan.';
   static const tidakDitemukanPesan =
       'Sirkel ini mungkin sudah dihapus. Silakan kembali dan pilih sirkel lain.';

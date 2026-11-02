@@ -3,14 +3,15 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../data/dummy/dummy_data.dart';
 import '../../data/models/sirkel.dart';
+import '../../routes/app_routes.dart';
 import '../../shared/widgets/cover_image.dart';
 import '../../shared/widgets/info_row.dart';
 import '../../shared/widgets/mode_badge.dart';
 import '../../shared/widgets/section_header.dart';
-import '../../routes/app_routes.dart';
 import '../../shared/widgets/user_avatar.dart';
 import 'anggota_sheet.dart';
 import 'gabung_dialog.dart';
+import 'sirkel_layout.dart';
 import 'sirkel_strings.dart';
 import 'sirkel_waktu.dart';
 
@@ -43,6 +44,16 @@ class _DetailSirkelScreenState extends State<DetailSirkelScreen> {
     DummyData.gabung(sirkel.id);
     setState(() {});
     await showGabungDialog(context, DummyData.cariSirkel(sirkel.id) ?? sirkel);
+  }
+
+  // Keluar sirkel lewat konfirmasi lebih dulu, karena jadwalnya ikut terhapus.
+  Future<void> _keluar(Sirkel sirkel) async {
+    final yakin = await _konfirmasiKeluar(context, sirkel);
+    if (yakin != true || !mounted) return;
+    // Pengguna dihapus dari anggota & sirkelDiikuti → sesinya hilang dari jadwal.
+    DummyData.keluarSirkel(sirkel.id);
+    setState(() {});
+    _snack(SirkelStrings.keluarBerhasil);
   }
 
   // Status simpan disimpan di DummyData, jadi tetap sama saat Detail dibuka lagi.
@@ -101,12 +112,40 @@ class _DetailSirkelScreenState extends State<DetailSirkelScreen> {
         sudahGabung: sudahGabung,
         mentorSendiri: mentorSendiri,
         onGabung: () => _gabung(sirkel),
+        onKeluar: () => _keluar(sirkel),
       ),
     );
   }
 }
 
-/// Header: sampul (220 px, 140 px di landscape) dengan tombol kembali & bookmark.
+/// Dialog konfirmasi keluar. Mengembalikan true bila "Keluar" ditekan,
+/// false untuk "Batal", dan null bila dialog ditutup dengan mengetuk di luar.
+Future<bool?> _konfirmasiKeluar(BuildContext context, Sirkel sirkel) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) {
+      final scheme = Theme.of(context).colorScheme;
+      return AlertDialog(
+        title: Text(SirkelStrings.keluarJudul(sirkel.judul)),
+        content: const Text(SirkelStrings.keluarPesan),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(SirkelStrings.batal),
+          ),
+          // Aksi yang menghapus data diberi warna error sebagai peringatan (M3).
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: scheme.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(SirkelStrings.keluar),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Header: sampul (220 px, 140 px di HP landscape) dengan tombol kembali & bookmark.
 class _Header extends StatelessWidget {
   const _Header({
     required this.sirkel,
@@ -120,12 +159,11 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // P7: di HP landscape (tinggi ±360 px) header dipendekkan agar tidak
-    // memakan lebih dari setengah layar.
-    final landscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
-    final tinggi =
-        landscape ? AppSizes.detailHeaderLandscape : AppSizes.detailHeader;
+    // P7: hanya di HP landscape header dipendekkan agar tidak memakan lebih dari
+    // setengah layar. Desktop & tablet landscape tetap 220 px (lihat landscapeHp).
+    final tinggi = landscapeHp(context)
+        ? AppSizes.detailHeaderLandscape
+        : AppSizes.detailHeader;
 
     // P6: Stack menumpuk tombol di atas gambar sampul.
     return SizedBox(
@@ -303,6 +341,7 @@ class _Konten extends StatelessWidget {
                   children: [
                     UserAvatar(
                       imagePath: a.avatar,
+                      nama: a.nama,
                       size: AppSizes.avatarAnggota,
                     ),
                     const SizedBox(height: AppSizes.xs),
@@ -349,7 +388,11 @@ class _KartuMentor extends StatelessWidget {
         padding: const EdgeInsets.all(AppSizes.m),
         child: Row(
           children: [
-            UserAvatar(imagePath: mentor.avatar, size: AppSizes.avatarM),
+            UserAvatar(
+              imagePath: mentor.avatar,
+              nama: mentor.nama,
+              size: AppSizes.avatarM,
+            ),
             const SizedBox(width: AppSizes.sm),
             Expanded(
               child: Column(
@@ -380,28 +423,35 @@ class _KartuMentor extends StatelessWidget {
   }
 }
 
-/// Bar bawah tetap: sisa kursi + tombol Gabung, atau info mentor + "Lihat jadwal"
-/// bila pengguna adalah mentor sirkel ini.
+/// Bar bawah tetap, isinya mengikuti peran pengguna:
+/// mentor → "Lihat jadwal"; anggota → "Keluar sirkel"; lainnya → "Gabung sirkel".
 class _BarBawah extends StatelessWidget {
   const _BarBawah({
     required this.sirkel,
     required this.sudahGabung,
     required this.mentorSendiri,
     required this.onGabung,
+    required this.onKeluar,
   });
 
   final Sirkel sirkel;
   final bool sudahGabung;
   final bool mentorSendiri;
   final VoidCallback onGabung;
+  final VoidCallback onKeluar;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    // Tombol hanya aktif bila belum bergabung dan masih ada kursi.
-    final bisaGabung = !sudahGabung && !sirkel.penuh;
+    // Gabung hanya aktif bila masih ada kursi.
+    final bisaGabung = !sirkel.penuh;
+    final label = mentorSendiri
+        ? SirkelStrings.kamuMentor
+        : sudahGabung
+            ? SirkelStrings.kamuAnggota
+            : SirkelStrings.kuota;
 
     return Container(
       color: scheme.surfaceContainer,
@@ -427,9 +477,7 @@ class _BarBawah extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          mentorSendiri
-                              ? SirkelStrings.kamuMentor
-                              : SirkelStrings.kuota,
+                          label,
                           style: text.bodySmall
                               ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
@@ -443,21 +491,22 @@ class _BarBawah extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSizes.m),
-                  // Mentor tidak perlu bergabung ke sirkelnya sendiri.
+                  // Mentor tidak bisa bergabung/keluar dari sirkelnya sendiri.
                   if (mentorSendiri)
                     OutlinedButton(
                       onPressed: () =>
                           Navigator.of(context).pushNamed(AppRoutes.sirkelSaya),
                       child: const Text(SirkelStrings.lihatJadwal),
                     )
+                  else if (sudahGabung)
+                    OutlinedButton(
+                      onPressed: onKeluar,
+                      child: const Text(SirkelStrings.keluarSirkel),
+                    )
                   else
                     FilledButton(
                       onPressed: bisaGabung ? onGabung : null,
-                      child: Text(
-                        sudahGabung
-                            ? SirkelStrings.sudahGabung
-                            : SirkelStrings.gabung,
-                      ),
+                      child: const Text(SirkelStrings.gabung),
                     ),
                 ],
               ),

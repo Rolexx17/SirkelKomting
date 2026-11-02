@@ -1,5 +1,6 @@
 /// Jenis notifikasi; menentukan gambar/ikon yang ditampilkan di daftar Notifikasi.
-enum JenisNotifikasi { sesi, materi, diterima, lencana, jadwal }
+/// `mentor` dipakai untuk kabar pengajuan mentor (tanpa gambar).
+enum JenisNotifikasi { sesi, materi, diterima, lencana, jadwal, mentor }
 
 /// Satu item di layar Notifikasi.
 class Notifikasi {

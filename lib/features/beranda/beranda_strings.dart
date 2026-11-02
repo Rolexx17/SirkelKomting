@@ -21,6 +21,7 @@ class BerandaStrings {
   static const online = 'Online';
   static const offline = 'Offline';
   static const masukSesi = 'Masuk sesi';
+  static const detailSesi = 'Detail sesi';
 
   // Mata kuliah (carousel) dan sheet Atur
   static const mataKuliahmu = 'Mata kuliahmu';

@@ -6,8 +6,8 @@ import '../../core/constants/app_sizes.dart';
 import '../../data/models/materi.dart';
 import 'materi_strings.dart';
 
-/// Pembaca materi (simulasi): halaman "kertas" yang digeser satu per satu dengan
-/// PageView, plus deretan thumbnail halaman memakai CarouselView Material 3.
+/// Pembaca materi (simulasi): satu "kertas" per poin isi materi yang digeser dengan
+/// PageView, plus deretan thumbnail bagian memakai CarouselView Material 3.
 class PembacaMateriScreen extends StatefulWidget {
   const PembacaMateriScreen({super.key, required this.materi});
 
@@ -18,37 +18,59 @@ class PembacaMateriScreen extends StatefulWidget {
 }
 
 class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
-  final _controller = PageController();
-  int _halaman = 0;
+  final _halamanController = PageController();
+  final _carouselController = CarouselController();
+  int _bagian = 0;
 
-  static const _maksHalaman = 12;
   static const _durasiGeser = Duration(milliseconds: 250);
-  static const _tinggiCarousel = 72.0;
-  static const _lebarThumbnail = 56.0;
+  static const _tinggiCarousel = 80.0;
+  static const _lebarThumbnail = 140.0;
   static const _batasTinggiHp = 600.0;
 
-  /// Jumlah halaman = halaman materi, minimal 1 dan maksimal 12.
-  int get _jumlah => math.max(1, math.min(widget.materi.halaman, _maksHalaman));
+  Materi get _materi => widget.materi;
+  int get _jumlah => _materi.jumlahBagian;
+  bool get _bagianTerakhir => _bagian == _jumlah - 1;
 
-  bool get _halamanTerakhir => _halaman == _jumlah - 1;
+  /// Judul bagian ke-[i] = poin isi; bila materi tanpa isi, pakai judul materi.
+  String _judulBagian(int i) =>
+      i < _materi.isi.length ? _materi.isi[i] : _materi.judul;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _halamanController.dispose();
+    _carouselController.dispose();
     super.dispose();
   }
 
-  void _keHalaman(int i) {
-    _controller.animateToPage(i, duration: _durasiGeser, curve: Curves.easeOut);
+  void _keBagian(int i) {
+    _halamanController.animateToPage(
+      i,
+      duration: _durasiGeser,
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _saatBagianBerubah(int i) {
+    setState(() => _bagian = i);
+    // Thumbnail ikut bergeser ke bagian aktif. hasClients dicek karena carousel
+    // disembunyikan di HP landscape (controller-nya tidak terpasang).
+    if (_carouselController.hasClients) {
+      _carouselController.animateToItem(
+        i,
+        duration: _durasiGeser,
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final rentang = _materi.rentangHalaman(_bagian);
 
     // P7 (orientasi): di HP landscape tinggi layar sempit, jadi deretan thumbnail
-    // disembunyikan agar halaman kertas tetap terbaca.
+    // disembunyikan agar kertas tetap terbaca.
     final landscapeHp =
         MediaQuery.orientationOf(context) == Orientation.landscape &&
             MediaQuery.sizeOf(context).height < _batasTinggiHp;
@@ -61,13 +83,14 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            Text(_materi.judul, maxLines: 1, overflow: TextOverflow.ellipsis),
             Text(
-              widget.materi.judul,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              MateriStrings.indikatorHalaman(_halaman + 1, _jumlah),
+              MateriStrings.subjudulPembaca(
+                _bagian + 1,
+                _jumlah,
+                rentang.awal,
+                rentang.akhir,
+              ),
               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
@@ -76,15 +99,14 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
       body: Column(
         children: [
           Expanded(
-            // P6: PageView menggeser satu halaman penuh setiap kali.
+            // P6: PageView menggeser satu bagian penuh setiap kali.
             child: PageView.builder(
-              controller: _controller,
+              controller: _halamanController,
               itemCount: _jumlah,
-              onPageChanged: (i) => setState(() => _halaman = i),
+              onPageChanged: _saatBagianBerubah,
               itemBuilder: (context, i) => _HalamanKertas(
-                judul: i < widget.materi.isi.length
-                    ? widget.materi.isi[i]
-                    : MateriStrings.judulHalaman(i + 1),
+                judul: _judulBagian(i),
+                catatan: i < _materi.catatan.length ? _materi.catatan[i] : null,
                 nomor: i,
               ),
             ),
@@ -92,27 +114,18 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
           if (!landscapeHp && _jumlah > 1)
             SizedBox(
               height: _tinggiCarousel,
-              // P6: CarouselView (Material 3) berisi thumbnail; ketuk untuk lompat halaman.
+              // P6: CarouselView (Material 3) berisi thumbnail bagian; ketuk untuk lompat.
               child: CarouselView(
+                controller: _carouselController,
                 itemExtent: _lebarThumbnail,
                 padding: const EdgeInsets.all(AppSizes.xs),
-                onTap: _keHalaman,
+                onTap: _keBagian,
                 children: [
                   for (var i = 0; i < _jumlah; i++)
-                    ColoredBox(
-                      color: i == _halaman
-                          ? scheme.primaryContainer
-                          : scheme.surface,
-                      child: Center(
-                        child: Text(
-                          MateriStrings.labelThumbnail(i + 1),
-                          style: text.labelLarge?.copyWith(
-                            color: i == _halaman
-                                ? scheme.onPrimaryContainer
-                                : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
+                    _Thumbnail(
+                      label: MateriStrings.labelBagian(i + 1),
+                      judul: _judulBagian(i),
+                      aktif: i == _bagian,
                     ),
                 ],
               ),
@@ -135,9 +148,8 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      // Tombol nonaktif (null) di halaman pertama.
-                      onPressed:
-                          _halaman > 0 ? () => _keHalaman(_halaman - 1) : null,
+                      // Tombol nonaktif (null) di bagian pertama.
+                      onPressed: _bagian > 0 ? () => _keBagian(_bagian - 1) : null,
                       icon: const Icon(Icons.chevron_left),
                       label: const Text(MateriStrings.sebelumnya),
                     ),
@@ -145,16 +157,16 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
                   const SizedBox(width: AppSizes.m),
                   Expanded(
                     child: FilledButton(
-                      // Di halaman terakhir tombol berubah menjadi "Selesai" dan menutup pembaca.
-                      onPressed: _halamanTerakhir
+                      // Di bagian terakhir tombol menjadi "Selesai" dan menutup pembaca.
+                      onPressed: _bagianTerakhir
                           ? () => Navigator.pop(context)
-                          : () => _keHalaman(_halaman + 1),
+                          : () => _keBagian(_bagian + 1),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Flexible(
                             child: Text(
-                              _halamanTerakhir
+                              _bagianTerakhir
                                   ? MateriStrings.selesai
                                   : MateriStrings.berikutnya,
                               overflow: TextOverflow.ellipsis,
@@ -162,7 +174,7 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
                           ),
                           const SizedBox(width: AppSizes.s),
                           Icon(
-                            _halamanTerakhir ? Icons.check : Icons.chevron_right,
+                            _bagianTerakhir ? Icons.check : Icons.chevron_right,
                           ),
                         ],
                       ),
@@ -178,20 +190,74 @@ class _PembacaMateriScreenState extends State<PembacaMateriScreen> {
   }
 }
 
-/// Satu halaman "kertas": judul poin materi lalu garis-garis abu sebagai isi tulisan.
+/// Satu thumbnail di carousel: label bagian + judul poin (maks. 2 baris).
+class _Thumbnail extends StatelessWidget {
+  const _Thumbnail({
+    required this.label,
+    required this.judul,
+    required this.aktif,
+  });
+
+  final String label;
+  final String judul;
+  final bool aktif;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final warnaTeks = aktif ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
+
+    return ColoredBox(
+      color: aktif ? scheme.primaryContainer : scheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.sm,
+          vertical: AppSizes.s,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: text.labelMedium?.copyWith(color: warnaTeks)),
+            Flexible(
+              child: Text(
+                judul,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall?.copyWith(color: warnaTeks),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Satu halaman "kertas": judul poin, kalimat catatan, lalu garis abu sebagai sisa tulisan.
 class _HalamanKertas extends StatelessWidget {
-  const _HalamanKertas({required this.judul, required this.nomor});
+  const _HalamanKertas({
+    required this.judul,
+    required this.catatan,
+    required this.nomor,
+  });
 
   final String judul;
+  final String? catatan;
   final int nomor;
 
   // Pola panjang garis; digeser per halaman agar tiap halaman tampak berbeda.
   static const _pola = [1.0, 0.92, 0.97, 0.6, 1.0, 0.85, 0.7, 0.95, 0.5];
   static const _tinggiBaris = AppSizes.s + AppSizes.sm;
 
+  /// Batas garis agar kertas tetap minimalis di layar yang sangat tinggi.
+  static const _maksGaris = 12;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final catatan = this.catatan;
 
     // P7: kertas maksimal 560 px dan selalu memenuhi tinggi yang tersedia.
     return Center(
@@ -214,16 +280,25 @@ class _HalamanKertas extends StatelessWidget {
                   judul,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: text.titleMedium,
                 ),
+                if (catatan != null) ...[
+                  const SizedBox(height: AppSizes.s),
+                  Text(
+                    catatan,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium,
+                  ),
+                ],
                 const SizedBox(height: AppSizes.s),
                 // P7: banyaknya garis dihitung dari tinggi yang tersisa (constraints),
-                // jadi halaman tidak overflow baik di portrait maupun landscape.
+                // jadi kertas tidak overflow baik di portrait maupun landscape.
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final jumlah =
-                          (constraints.maxHeight / _tinggiBaris).floor();
+                      final muat = (constraints.maxHeight / _tinggiBaris).floor();
+                      final jumlah = math.max(0, math.min(muat, _maksGaris));
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

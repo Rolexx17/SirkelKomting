@@ -1,0 +1,8 @@
+# Folder platform bawaan `flutter create` (kode C++/Swift/Kotlin) tidak dihitung
+# GitHub Linguist, sehingga bahasa repository tercatat Dart.
+windows/** linguist-vendored
+linux/** linguist-vendored
+macos/** linguist-vendored
+ios/** linguist-vendored
+android/** linguist-vendored
+web/** linguist-vendored

@@ -14,6 +14,7 @@ import '../../shared/widgets/user_avatar.dart';
 import '../notifikasi/notifikasi_screen.dart';
 import '../shell/main_shell.dart';
 import '../sirkel_saya/jadwal_util.dart';
+import '../sirkel_saya/widgets/sesi_sheet.dart';
 import 'beranda_strings.dart';
 import 'widgets/atur_mata_kuliah_sheet.dart';
 import 'widgets/hari_ini_card.dart';
@@ -66,6 +67,13 @@ class _BerandaScreenState extends State<BerandaScreen> {
   Future<void> _buka(String route, {Object? arguments}) async {
     await Navigator.of(context).pushNamed(route, arguments: arguments);
     // Data bisa berubah setelah kembali (misalnya gabung sirkel), jadi Beranda dibangun ulang.
+    if (mounted) setState(() {});
+  }
+
+  /// Membuka sheet detail sesi, lalu membangun ulang Beranda (data bisa berubah,
+  /// misalnya keluar sirkel dari Detail Sirkel yang dibuka lewat sheet).
+  Future<void> _bukaSesi(Sirkel sirkel, Sesi sesi) async {
+    await showSesiSheet(context, sirkel: sirkel, sesi: sesi);
     if (mounted) setState(() {});
   }
 
@@ -129,7 +137,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   sirkel: sirkelSesi,
                   sesi: sesi,
                   label: BerandaScreen.labelSesi(sesi.waktu, sekarang),
-                  onMasukSesi: () => _buka(AppRoutes.sirkelSaya),
+                  bisaMasuk: bisaMasukSesi(sesi.waktu, sekarang),
+                  onBukaSesi: () => _bukaSesi(sirkelSesi, sesi),
                 )
               : null;
 
@@ -193,7 +202,12 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
     return Row(
       children: [
-        UserAvatar(imagePath: pengguna.avatar, size: AppSizes.avatarM),
+        // Akun baru tanpa foto → UserAvatar menampilkan inisial dari nama.
+        UserAvatar(
+          imagePath: pengguna.avatar,
+          size: AppSizes.avatarM,
+          nama: pengguna.nama,
+        ),
         const SizedBox(width: AppSizes.sm),
         Expanded(
           child: Column(
@@ -318,7 +332,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
   ) {
     return Card(
       child: InkWell(
-        onTap: () => _buka(AppRoutes.detailSirkel, arguments: sirkel.id),
+        onTap: () => _bukaSesi(sirkel, sesi),
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.sm),
           child: Row(

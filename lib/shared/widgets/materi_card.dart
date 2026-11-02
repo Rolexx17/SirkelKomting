@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_sizes.dart';
+import '../../data/dummy/dummy_data.dart';
 import '../../data/models/materi.dart';
 import '../../features/materi/materi_strings.dart';
 import 'cover_image.dart';
@@ -33,11 +34,38 @@ class MateriCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CoverImage(
-              path: materi.cover,
-              width: double.infinity,
-              height: tinggiSampul,
-              radius: 0,
+            // P6: Stack menumpuk penanda "tersimpan" di pojok kanan atas sampul.
+            Stack(
+              children: [
+                CoverImage(
+                  path: materi.cover,
+                  width: double.infinity,
+                  height: tinggiSampul,
+                  radius: 0,
+                ),
+                // Status dibaca langsung dari DummyData, jadi selalu sama dengan Detail Materi.
+                if (DummyData.materiDisimpan(materi.id))
+                  Positioned(
+                    top: AppSizes.s,
+                    right: AppSizes.s,
+                    child: Tooltip(
+                      message: MateriStrings.tersimpan,
+                      // P5: gaya sama seperti ModeBadge (latar surface 92%, sudut 8).
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSizes.xs),
+                        decoration: BoxDecoration(
+                          color: scheme.surface.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(AppSizes.radiusS),
+                        ),
+                        child: Icon(
+                          Icons.bookmark,
+                          size: AppSizes.iconS,
+                          color: scheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(

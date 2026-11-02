@@ -99,7 +99,8 @@ class _BarisOrang extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSizes.pagePadding),
-      leading: UserAvatar(imagePath: avatar, size: AppSizes.avatarM),
+      // Nama ikut dikirim: akun baru tanpa foto tampil sebagai inisial.
+      leading: UserAvatar(imagePath: avatar, nama: nama, size: AppSizes.avatarM),
       title: Text(nama),
       subtitle: Text(keterangan),
       trailing: trailing,

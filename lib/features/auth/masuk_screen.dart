@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_sizes.dart';
+import '../../core/utils/responsive.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/app_logo.dart';
 import '../../shared/widgets/app_text_field.dart';
@@ -87,11 +88,15 @@ class _MasukScreenState extends State<MasukScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: AppSizes.l),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: AppLogo(),
-              ),
-              const SizedBox(height: AppSizes.xxl),
+              // P7: di layar ≥ 840 logo sudah tampil di panel brand (kiri),
+              // jadi logo di atas form disembunyikan agar tidak muncul dua kali.
+              if (!context.isExpanded) ...const [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppLogo(),
+                ),
+                SizedBox(height: AppSizes.xxl),
+              ],
               Text(AuthStrings.masukJudul, style: text.headlineSmall),
               const SizedBox(height: AppSizes.s),
               Text(

@@ -72,8 +72,8 @@ class DummyData {
   );
 
   // Peserta tambahan: s2 butuh 6 anggota dan s4 butuh 7 anggota, padahal hanya
-  // ada 6 pengguna (termasuk mentornya). Mereka tidak masuk getter [pengguna]
-  // dan memakai ulang gambar avatar yang ada (aset avatar hanya 6).
+  // ada 6 pengguna utama (termasuk mentornya). Mereka memakai ulang gambar
+  // avatar yang ada (aset avatar hanya 6).
   static const _bima = AppUser(
     id: 'u7',
     nama: 'Bima Aditya',
@@ -95,8 +95,6 @@ class DummyData {
     angkatan: '2024',
     avatar: AppAssets.avatarKevin,
   );
-
-  static const _penggunaAwal = [_nadiaAwal, _raka, _sinta, _dimas, _lia, _kevin];
 
   // ---------------- Mata kuliah ----------------
   // Urutannya sama dengan AppAssets.covers, jadi indeks mata kuliah = indeks sampulnya.
@@ -235,6 +233,12 @@ class DummyData {
         'Limit tak hingga',
         '5 contoh soal UTS + pembahasan',
       ],
+      catatan: [
+        'Limit menyatakan nilai yang didekati f(x) ketika x mendekati suatu bilangan, ditulis lim x→c f(x).',
+        'Limit ada bila nilai pendekatan dari kiri dan kanan sama.',
+        'Limit tak hingga terjadi bila nilai fungsi membesar atau mengecil tanpa batas saat x mendekati suatu titik.',
+        'Soal disusun dari yang mudah ke sulit; coba kerjakan dulu sebelum membaca pembahasannya.',
+      ],
     ),
     Materi(
       id: 'm2',
@@ -250,6 +254,11 @@ class DummyData {
         'Level order (BFS)',
         'Contoh tree dan urutan kunjungannya',
       ],
+      catatan: [
+        'Ketiganya berbeda pada kapan simpul akar dikunjungi: sebelum, di antara, atau sesudah anak-anaknya.',
+        'Simpul dikunjungi per tingkat dari atas ke bawah dengan bantuan antrean (queue).',
+        'Satu tree yang sama ditelusuri dengan keempat cara agar perbedaannya mudah dibandingkan.',
+      ],
     ),
     Materi(
       id: 'm3',
@@ -264,6 +273,11 @@ class DummyData {
         'Ulasan singkat 1NF dan 2NF',
         'Ketergantungan transitif',
         '3 soal normalisasi + pembahasan',
+      ],
+      catatan: [
+        '1NF menghapus nilai berulang dalam satu kolom; 2NF menghapus ketergantungan pada sebagian kunci.',
+        'Terjadi bila kolom bukan kunci bergantung pada kolom bukan kunci lain, bukan langsung pada kunci utama.',
+        'Setiap soal dimulai dari tabel mentah lalu dipecah bertahap sampai memenuhi 3NF.',
       ],
     ),
     Materi(
@@ -281,21 +295,19 @@ class DummyData {
         'Uji-t dua sampel independen',
         '4 soal latihan + kunci jawaban',
       ],
+      catatan: [
+        'H0 menyatakan tidak ada perbedaan, sedangkan H1 adalah dugaan yang ingin dibuktikan.',
+        'Uji ini membandingkan rata-rata satu sampel dengan satu nilai acuan.',
+        'Uji ini membandingkan rata-rata dua kelompok yang tidak saling berhubungan.',
+        'Kerjakan berurutan: hipotesis, statistik uji, nilai kritis, lalu kesimpulan.',
+      ],
     ),
   ];
 
   // ---------------- Notifikasi ----------------
-  static const _notifikasiAwal = [
-    Notifikasi(
-      id: 'n1',
-      teks: '**Sesi Kalkulus I** dimulai 1 jam lagi. Siapkan soal yang mau dibahas.',
-      waktu: '18.00',
-      grup: 'Hari ini',
-      jenis: JenisNotifikasi.sesi,
-      belumDibaca: true,
-      gambar: AppAssets.avatarRaka,
-      sirkelId: 's1',
-    ),
+  // Notifikasi tetap (n1 "dimulai 1 jam lagi" dihapus; pengingat sesi kini dibuat
+  // otomatis dari jadwal, lihat [notifikasiSejak]).
+  static const _notifikasiStatis = [
     Notifikasi(
       id: 'n2',
       teks: '**Sinta** membagikan materi baru: Cheat Sheet Traversal Tree.',
@@ -349,21 +361,39 @@ class DummyData {
   static AppUser _aktif = _nadiaAwal;
   static List<Sirkel> _sirkel = List.of(_sirkelAwal);
   static List<String> _diikuti = List.of(_diikutiAwal);
-  static List<Notifikasi> _notifikasi = List.of(_notifikasiAwal);
-  static Set<String> _sirkelDisimpan = {};
-  static Set<String> _materiDisimpan = {};
+
+  /// Notifikasi dari aksi pengguna (gabung, terbitkan, ajukan mentor); terbaru di indeks 0.
+  static List<Notifikasi> _notifikasiTambahan = [];
+
+  /// Id notifikasi statis/tambahan yang sudah dibaca.
+  static Set<String> _notifikasiDibaca = {};
+
+  /// Kunci sesi (sirkel + waktu) yang pengingatnya sudah dibaca. Bila sesi terdekat
+  /// berganti, kuncinya berbeda sehingga pengingat baru tampil belum dibaca lagi.
+  static String? _pengingatDibaca;
+
+  // List (bukan Set) agar urutan menyimpan tetap tercatat.
+  static List<String> _sirkelDisimpan = [];
+  static List<String> _materiDisimpan = [];
+
+  static bool _mentorDiajukan = false;
 
   /// Nomor id sirkel baru berikutnya (s7, s8, ...).
   static int _nomorBerikut = 7;
+
+  /// Nomor id notifikasi tambahan berikutnya (n-baru-1, n-baru-2, ...).
+  static int _nomorNotifikasi = 1;
 
   // ---------------- Getter (hanya baca) ----------------
   /// Pengguna yang sedang masuk (awalnya Nadia); bisa berubah lewat [ubahProfil].
   static AppUser get penggunaAktif => _aktif;
 
-  /// Enam pengguna utama; Nadia diganti versi terbarunya bila profil diubah.
-  static List<AppUser> get pengguna => [
-        for (final u in _penggunaAwal) u.id == _aktif.id ? _aktif : u,
-      ];
+  /// Peserta → menunggu (setelah [ajukanMentor]) → mentor (setelah disetujui atau
+  /// menerbitkan sirkel). Diturunkan dari data, jadi tidak pernah tidak sinkron.
+  static StatusMentor get statusMentor {
+    if (_aktif.isMentor) return StatusMentor.mentor;
+    return _mentorDiajukan ? StatusMentor.menunggu : StatusMentor.peserta;
+  }
 
   /// Salinan tak-bisa-diubah; perubahan hanya lewat fungsi di kelas ini.
   static List<Sirkel> get semuaSirkel => List.unmodifiable(_sirkel);
@@ -374,14 +404,12 @@ class DummyData {
   static List<Materi> get semuaMateri => _materi;
   static List<String> get daftarMataKuliah => _mataKuliah;
 
-  static List<Notifikasi> get notifikasi => List.unmodifiable(_notifikasi);
-  static bool get adaNotifikasiBaru => _notifikasi.any((n) => n.belumDibaca);
-
   static List<Lencana> get semuaLencana => _lencana;
   static List<Lencana> get lencanaTerbaru =>
       _lencana.take(_jumlahLencanaTerbaru).toList();
   static int get jumlahJamBelajar => _jamBelajar;
 
+  // ---------------- Jadwal ----------------
   /// Sesi dari semua sirkel yang diikuti, dari sekarang sampai 14 hari ke depan.
   /// Dihitung ulang setiap kali dibaca, jadi tanggalnya selalu mengikuti hari ini.
   static List<Sesi> get jadwalSesi => jadwalSesiSejak(DateTime.now());
@@ -416,6 +444,90 @@ class DummyData {
     return hasil..sort((a, b) => a.waktu.compareTo(b.waktu));
   }
 
+  // ---------------- Notifikasi ----------------
+  /// Id tetap untuk notifikasi pengingat sesi.
+  static const idPengingatSesi = 'n-sesi';
+
+  static List<Notifikasi> get notifikasi => notifikasiSejak(DateTime.now());
+
+  static bool get adaNotifikasiBaru => notifikasi.any((n) => n.belumDibaca);
+
+  /// Menyusun daftar notifikasi pada waktu [sekarang]:
+  /// pengingat sesi terdekat (bila ada) → notifikasi tambahan → notifikasi statis.
+  /// Status dibaca diambil dari [_notifikasiDibaca] dan [_pengingatDibaca].
+  static List<Notifikasi> notifikasiSejak(DateTime sekarang) {
+    final pengingat = _pengingatSesi(sekarang);
+    return [
+      if (pengingat != null) pengingat,
+      for (final n in [..._notifikasiTambahan, ..._notifikasiStatis])
+        _notifikasiDibaca.contains(n.id) ? n.copyWith(belumDibaca: false) : n,
+    ];
+  }
+
+  /// Pengingat untuk sesi pertama di jadwal; null bila tidak ada sesi.
+  static Notifikasi? _pengingatSesi(DateTime sekarang) {
+    final sesi = jadwalSesiSejak(sekarang).firstOrNull;
+    if (sesi == null) return null;
+    final sirkel = cariSirkel(sesi.sirkelId);
+    if (sirkel == null) return null;
+
+    return Notifikasi(
+      id: idPengingatSesi,
+      teks: '**Sesi ${sirkel.mataKuliah}** ${labelHariSesi(sesi.waktu, sekarang)} '
+          'pukul ${sirkel.jam}. Siapkan soal yang mau dibahas.',
+      waktu: _waktuPengingat,
+      grup: _grupHariIni,
+      jenis: JenisNotifikasi.sesi,
+      belumDibaca: _pengingatDibaca != _kunciSesi(sesi),
+      gambar: sirkel.mentor.avatar,
+      sirkelId: sirkel.id,
+    );
+  }
+
+  static String _kunciSesi(Sesi sesi) =>
+      '${sesi.sirkelId}@${sesi.waktu.toIso8601String()}';
+
+  static const _grupHariIni = 'Hari ini';
+  static const _waktuBaru = 'Baru saja';
+  static const _waktuPengingat = 'Pengingat jadwal';
+
+  /// Menambah notifikasi baru di urutan teratas (grup "Hari ini", belum dibaca).
+  static void _tambahNotifikasi({
+    required String teks,
+    required JenisNotifikasi jenis,
+    String? gambar,
+    String? sirkelId,
+  }) {
+    _notifikasiTambahan.insert(
+      0,
+      Notifikasi(
+        id: 'n-baru-${_nomorNotifikasi++}',
+        teks: teks,
+        waktu: _waktuBaru,
+        grup: _grupHariIni,
+        jenis: jenis,
+        belumDibaca: true,
+        gambar: gambar,
+        sirkelId: sirkelId,
+      ),
+    );
+  }
+
+  static void tandaiNotifikasiDibaca(String id) {
+    if (id == idPengingatSesi) {
+      final sesi = jadwalSesi.firstOrNull;
+      if (sesi != null) _pengingatDibaca = _kunciSesi(sesi);
+    } else {
+      _notifikasiDibaca.add(id);
+    }
+  }
+
+  static void tandaiSemuaNotifikasiDibaca() {
+    for (final n in notifikasi) {
+      tandaiNotifikasiDibaca(n.id);
+    }
+  }
+
   // ---------------- Fungsi sirkel ----------------
   static Sirkel? cariSirkel(String id) =>
       _sirkel.where((s) => s.id == id).firstOrNull;
@@ -430,8 +542,8 @@ class DummyData {
       cariSirkel(sirkelId)?.mentor.id == _aktif.id;
 
   /// Menambah pengguna aktif ke anggota sirkel dan ke [sirkelDiikuti], sehingga
-  /// sesinya otomatis muncul di [jadwalSesi]. Diabaikan bila id tidak ada,
-  /// sudah bergabung, atau sirkel penuh.
+  /// sesinya otomatis muncul di [jadwalSesi], lalu menambah notifikasi "diterima".
+  /// Diabaikan bila id tidak ada, sudah bergabung, atau sirkel penuh.
   static void gabung(String sirkelId) {
     final i = _sirkel.indexWhere((s) => s.id == sirkelId);
     if (i == -1 || sudahGabung(sirkelId) || _sirkel[i].penuh) return;
@@ -440,11 +552,33 @@ class DummyData {
     // Objek Sirkel tidak bisa diubah, jadi diganti dengan salinan berisi anggota baru.
     _sirkel[i] = lama.copyWith(anggota: [...lama.anggota, _aktif]);
     _diikuti.add(sirkelId);
+    _tambahNotifikasi(
+      teks: 'Kamu bergabung ke sirkel **${lama.mataKuliah} · ${lama.judul}**.',
+      jenis: JenisNotifikasi.diterima,
+      gambar: lama.cover,
+      sirkelId: sirkelId,
+    );
+  }
+
+  /// Kebalikan [gabung]: menghapus pengguna aktif dari anggota dan dari [sirkelDiikuti],
+  /// sehingga sesinya hilang dari [jadwalSesi]. Diabaikan bila belum bergabung atau
+  /// bila pengguna adalah mentor sirkel tersebut (mentor tidak bisa meninggalkan sirkelnya).
+  static void keluarSirkel(String sirkelId) {
+    if (!sudahGabung(sirkelId) || adalahMentorSirkel(sirkelId)) return;
+
+    final i = _sirkel.indexWhere((s) => s.id == sirkelId);
+    if (i != -1) {
+      final lama = _sirkel[i];
+      _sirkel[i] = lama.copyWith(
+        anggota: lama.anggota.where((a) => a.id != _aktif.id).toList(),
+      );
+    }
+    _diikuti.remove(sirkelId);
   }
 
   /// Membuat sirkel baru dengan pengguna aktif sebagai mentornya, lalu mengembalikan id barunya.
-  /// Sirkel baru diletakkan paling atas agar langsung terlihat di Jelajah, dan masuk
-  /// [sirkelDiikuti] supaya jadwalnya muncul di Sirkel Saya.
+  /// Pengguna otomatis berstatus mentor, sirkel diletakkan paling atas di Jelajah, masuk
+  /// [sirkelDiikuti] (jadwalnya muncul di Sirkel Saya), dan ada notifikasi "diterbitkan".
   static String tambahSirkel({
     required String mataKuliah,
     required String judul,
@@ -454,6 +588,9 @@ class DummyData {
     required int kuota,
     required String cover,
   }) {
+    if (!_aktif.isMentor) _gantiPenggunaAktif(_aktif.copyWith(isMentor: true));
+    _mentorDiajukan = false;
+
     final id = 's${_nomorBerikut++}';
     _sirkel.insert(
       0,
@@ -477,19 +614,49 @@ class DummyData {
       ),
     );
     _diikuti.add(id);
+    _tambahNotifikasi(
+      teks: 'Sirkel **$judul** berhasil diterbitkan.',
+      jenis: JenisNotifikasi.diterima,
+      gambar: cover,
+      sirkelId: id,
+    );
     return id;
   }
 
-  // ---------------- Profil ----------------
-  /// Mengganti nama, prodi, dan (opsional) peran pengguna aktif. Objek pengguna di
-  /// anggota dan mentor semua sirkel ikut diganti (dicocokkan lewat id), supaya nama
-  /// baru tampil di Beranda, Detail Sirkel, SirkelCard, dan layar lain.
+  // ---------------- Profil & mentor ----------------
+  /// Mengganti nama, prodi, dan (opsional) peran pengguna aktif. Bila [akunBaru],
+  /// avatar dikosongkan (UserAvatar menampilkan inisial) dan pengajuan mentor dibatalkan.
   static void ubahProfil({
     required String nama,
     required String prodi,
     bool? mentor,
+    bool akunBaru = false,
   }) {
-    final baru = _aktif.copyWith(nama: nama, prodi: prodi, isMentor: mentor);
+    _gantiPenggunaAktif(
+      _aktif.copyWith(
+        nama: nama,
+        prodi: prodi,
+        isMentor: mentor,
+        avatar: akunBaru ? '' : null,
+      ),
+    );
+    if (akunBaru) _mentorDiajukan = false;
+  }
+
+  /// Mengajukan diri menjadi mentor: peserta → menunggu, plus notifikasi jenis mentor.
+  /// Diabaikan bila sudah menunggu atau sudah mentor.
+  static void ajukanMentor() {
+    if (statusMentor != StatusMentor.peserta) return;
+    _mentorDiajukan = true;
+    _tambahNotifikasi(
+      teks: 'Pengajuan mentor sedang ditinjau tim Sirkel.',
+      jenis: JenisNotifikasi.mentor,
+    );
+  }
+
+  /// Mengganti pengguna aktif dan objeknya di `anggota`/`mentor` semua sirkel
+  /// (dicocokkan lewat id), karena AppUser immutable dan disimpan sebagai objek.
+  static void _gantiPenggunaAktif(AppUser baru) {
     _aktif = baru;
     _sirkel = [
       for (final s in _sirkel)
@@ -500,32 +667,27 @@ class DummyData {
     ];
   }
 
-  // ---------------- Notifikasi ----------------
-  static void tandaiSemuaNotifikasiDibaca() {
-    _notifikasi = [
-      for (final n in _notifikasi) n.copyWith(belumDibaca: false),
-    ];
-  }
-
-  static void tandaiNotifikasiDibaca(String id) {
-    _notifikasi = [
-      for (final n in _notifikasi) n.id == id ? n.copyWith(belumDibaca: false) : n,
-    ];
-  }
-
   // ---------------- Simpanan (bookmark) ----------------
   static bool sirkelDisimpan(String id) => _sirkelDisimpan.contains(id);
 
   static void toggleSimpanSirkel(String id) {
-    // Set.remove mengembalikan false bila id belum ada, jadi saat itu id ditambahkan.
+    // List.remove mengembalikan false bila id belum ada, jadi saat itu id ditambahkan.
     if (!_sirkelDisimpan.remove(id)) _sirkelDisimpan.add(id);
   }
+
+  /// Sirkel yang disimpan, yang terakhir disimpan paling atas.
+  static List<Sirkel> get sirkelTersimpan =>
+      _sirkelDisimpan.reversed.map(cariSirkel).whereType<Sirkel>().toList();
 
   static bool materiDisimpan(String id) => _materiDisimpan.contains(id);
 
   static void toggleSimpanMateri(String id) {
     if (!_materiDisimpan.remove(id)) _materiDisimpan.add(id);
   }
+
+  /// Materi yang disimpan, yang terakhir disimpan paling atas.
+  static List<Materi> get materiTersimpan =>
+      _materiDisimpan.reversed.map(cariMateri).whereType<Materi>().toList();
 
   // ---------------- Test ----------------
   /// Mengembalikan semua data ke kondisi awal. Data disimpan statis, jadi tanpa ini
@@ -535,9 +697,13 @@ class DummyData {
     _aktif = _nadiaAwal;
     _sirkel = List.of(_sirkelAwal);
     _diikuti = List.of(_diikutiAwal);
-    _notifikasi = List.of(_notifikasiAwal);
-    _sirkelDisimpan = {};
-    _materiDisimpan = {};
+    _notifikasiTambahan = [];
+    _notifikasiDibaca = {};
+    _pengingatDibaca = null;
+    _sirkelDisimpan = [];
+    _materiDisimpan = [];
+    _mentorDiajukan = false;
     _nomorBerikut = 7;
+    _nomorNotifikasi = 1;
   }
 }

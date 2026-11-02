@@ -91,13 +91,19 @@ class MainShellState extends State<MainShell> {
       key: _kunciIsi,
       index: _index,
       children: [
-        const BerandaScreen(),
+        // Sengaja TANPA const. Widget const yang identik dilewati Flutter saat
+        // rebuild, sehingga Beranda & Profil tidak membaca ulang DummyData ketika
+        // pindah tab (bug "tab basi": nama/lonceng/rekomendasi tidak berubah).
+        // Instance baru di setiap build membuat keduanya ikut di-build ulang.
+        // ignore: prefer_const_constructors
+        BerandaScreen(),
         KeyedSubtree(
           key: ValueKey(_versiJelajah),
           child: JelajahScreen(kataKunciAwal: _kataKunciJelajah),
         ),
         const RuangMateriScreen(),
-        const ProfilScreen(),
+        // ignore: prefer_const_constructors
+        ProfilScreen(),
       ],
     );
 

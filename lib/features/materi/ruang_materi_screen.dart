@@ -22,9 +22,11 @@ class _RuangMateriScreenState extends State<RuangMateriScreen> {
   /// Mata kuliah yang dipilih; null berarti chip "Semua".
   String? _terpilih;
 
-  void _bukaDetail(Materi materi) {
+  Future<void> _bukaDetail(Materi materi) async {
     // Hanya id yang dikirim; Detail Materi mengambil datanya sendiri lewat cariMateri.
-    Navigator.pushNamed(context, AppRoutes.detailMateri, arguments: materi.id);
+    await Navigator.pushNamed(context, AppRoutes.detailMateri, arguments: materi.id);
+    // Setelah kembali, bangun ulang grid agar penanda "tersimpan" di kartu ikut berubah.
+    if (mounted) setState(() {});
   }
 
   @override

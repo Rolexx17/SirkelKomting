@@ -8,16 +8,54 @@ import 'package:sirkel_mobile/features/jelajah/filter_sheet.dart';
 import 'package:sirkel_mobile/features/jelajah/jelajah_screen.dart';
 import 'package:sirkel_mobile/features/jelajah/jelajah_strings.dart';
 import 'package:sirkel_mobile/features/sirkel/detail_sirkel_screen.dart';
+import 'package:sirkel_mobile/features/sirkel/gabung_dialog.dart';
 import 'package:sirkel_mobile/features/sirkel/sirkel_strings.dart';
+import 'package:sirkel_mobile/shared/widgets/cover_image.dart';
 import 'package:sirkel_mobile/shared/widgets/sirkel_card.dart';
 
-/// Memasang [layar] di ukuran ponsel 360×800 (logical pixel) dengan tema aplikasi.
-Future<void> pasang(WidgetTester tester, Widget layar) async {
-  tester.view.physicalSize = const Size(1080, 2400);
-  tester.view.devicePixelRatio = 3.0;
+/// Ukuran layar uji (logical pixel).
+const hpPortrait = Size(360, 800);
+const hpLandscape = Size(932, 430);
+const desktop = Size(1280, 800);
+
+/// Memasang [layar] dengan tema aplikasi pada [ukuran] (bawaan: HP portrait 360×800).
+Future<void> pasang(
+  WidgetTester tester,
+  Widget layar, {
+  Size ukuran = hpPortrait,
+}) async {
+  tester.view.physicalSize = ukuran;
+  tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(MaterialApp(theme: AppTheme.light(), home: layar));
 }
+
+/// Membuka dialog Gabung (sirkel s4) dari tombol sementara pada [ukuran].
+Future<void> bukaDialogGabung(WidgetTester tester, Size ukuran) async {
+  await pasang(
+    tester,
+    Builder(
+      builder: (context) => Scaffold(
+        body: Center(
+          child: TextButton(
+            onPressed: () =>
+                showGabungDialog(context, DummyData.cariSirkel('s4')!),
+            child: const Text('buka'),
+          ),
+        ),
+      ),
+    ),
+    ukuran: ukuran,
+  );
+  await tester.tap(find.text('buka'));
+  await tester.pumpAndSettle();
+}
+
+/// Ilustrasi di dalam dialog Gabung (satu-satunya Image di Dialog).
+Finder get ilustrasiDialog => find.descendant(
+      of: find.byType(Dialog),
+      matching: find.byType(Image),
+    );
 
 /// Membuat sirkel multi-hari lewat fungsi Buat Sirkel milik DummyData; Nadia jadi mentornya.
 String buatSirkelSeninRabu() => DummyData.tambahSirkel(
@@ -219,6 +257,98 @@ void main() {
       expect(find.text(SirkelStrings.kamuMentor), findsOneWidget);
       expect(find.text(SirkelStrings.gabung), findsNothing);
       expect(find.text(SirkelStrings.sudahGabung), findsNothing);
+    });
+  });
+
+  group('Iterasi 3: orientasi Detail & dialog Gabung (widget test)', () {
+    testWidgets('header Detail 220 px di desktop 1280×800', (tester) async {
+      await pasang(
+        tester,
+        const DetailSirkelScreen(sirkelId: 's1'),
+        ukuran: desktop,
+      );
+      expect(tester.getSize(find.byType(CoverImage)).height, 220);
+    });
+
+    testWidgets('header Detail 140 px di HP landscape 932×430', (tester) async {
+      await pasang(
+        tester,
+        const DetailSirkelScreen(sirkelId: 's1'),
+        ukuran: hpLandscape,
+      );
+      expect(tester.getSize(find.byType(CoverImage)).height, 140);
+    });
+
+    testWidgets('dialog Gabung menampilkan ilustrasi di desktop 1280×800',
+        (tester) async {
+      await bukaDialogGabung(tester, desktop);
+      expect(ilustrasiDialog, findsOneWidget);
+    });
+
+    testWidgets('dialog Gabung menyembunyikan ilustrasi di HP landscape',
+        (tester) async {
+      await bukaDialogGabung(tester, hpLandscape);
+      expect(ilustrasiDialog, findsNothing);
+      expect(find.text(SirkelStrings.gabungJudul), findsOneWidget);
+    });
+  });
+
+  group('Iterasi 3: keluar sirkel & penanda simpan (widget test)', () {
+    testWidgets('keluar sirkel s1: konfirmasi → tombol "Gabung sirkel" kembali',
+        (tester) async {
+      await pasang(tester, const DetailSirkelScreen(sirkelId: 's1'));
+      expect(find.text(SirkelStrings.kamuAnggota), findsOneWidget);
+
+      await tester.tap(find.text(SirkelStrings.keluarSirkel));
+      await tester.pumpAndSettle();
+      expect(find.text(SirkelStrings.keluarJudul('Limit & Turunan')),
+          findsOneWidget);
+
+      await tester.tap(find.text(SirkelStrings.keluar));
+      await tester.pumpAndSettle();
+
+      expect(find.text(SirkelStrings.gabung), findsOneWidget);
+      expect(find.text(SirkelStrings.keluarBerhasil), findsOneWidget);
+      expect(DummyData.sirkelDiikuti.map((s) => s.id), isNot(contains('s1')));
+      expect(DummyData.jadwalSesi.any((sesi) => sesi.sirkelId == 's1'), isFalse);
+    });
+
+    testWidgets('"Batal" di dialog keluar tidak mengubah apa pun',
+        (tester) async {
+      await pasang(tester, const DetailSirkelScreen(sirkelId: 's1'));
+      final anggotaAwal = DummyData.cariSirkel('s1')!.anggota.length;
+
+      await tester.tap(find.text(SirkelStrings.keluarSirkel));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(SirkelStrings.batal));
+      await tester.pumpAndSettle();
+
+      expect(find.text(SirkelStrings.keluarSirkel), findsOneWidget);
+      expect(DummyData.sudahGabung('s1'), isTrue);
+      expect(DummyData.cariSirkel('s1')!.anggota.length, anggotaAwal);
+    });
+
+    testWidgets('sirkel buatan sendiri tidak menampilkan "Keluar sirkel"',
+        (tester) async {
+      final id = buatSirkelSeninRabu();
+      await pasang(tester, DetailSirkelScreen(sirkelId: id));
+
+      expect(find.text(SirkelStrings.keluarSirkel), findsNothing);
+      expect(find.text(SirkelStrings.lihatJadwal), findsOneWidget);
+    });
+
+    testWidgets('SirkelCard menampilkan Icons.bookmark setelah disimpan',
+        (tester) async {
+      Widget kartu() => Scaffold(
+            body: SirkelCard(sirkel: DummyData.cariSirkel('s1')!),
+          );
+
+      await pasang(tester, kartu());
+      expect(find.byIcon(Icons.bookmark), findsNothing);
+
+      DummyData.toggleSimpanSirkel('s1');
+      await pasang(tester, kartu());
+      expect(find.byIcon(Icons.bookmark), findsOneWidget);
     });
   });
 }
