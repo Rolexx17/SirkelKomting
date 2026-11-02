@@ -10,11 +10,12 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/sirkel_card.dart';
 import 'jadwal_util.dart';
 import 'sirkel_saya_strings.dart';
+import 'widgets/sesi_sheet.dart';
 
 enum _Segmen { jadwal, sirkel }
 
-/// Layar Sirkel Saya: jadwal sesi per minggu (bisa disaring per tanggal)
-/// dan daftar sirkel yang diikuti.
+/// Layar Sirkel Saya: jadwal sesi per minggu (bisa disaring per tanggal),
+/// detail tiap sesi lewat bottom sheet, dan daftar sirkel yang diikuti.
 class SirkelSayaScreen extends StatefulWidget {
   const SirkelSayaScreen({super.key});
 
@@ -41,16 +42,19 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
     if (mounted) setState(() {});
   }
 
-  void _masukSesi(Sirkel sirkel) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            SirkelSayaStrings.masukSesiInfo(sirkel.mataKuliah, sirkel.lokasi),
-          ),
-        ),
-      );
+  /// Membuka sheet detail sesi lalu membangun ulang jadwal (sirkel bisa saja
+  /// ditinggalkan lewat Detail Sirkel yang dibuka dari sheet).
+  Future<void> _bukaSesi(Sirkel sirkel, Sesi sesi) async {
+    await showSesiSheet(context, sirkel: sirkel, sesi: sesi);
+    if (mounted) setState(() {});
+  }
+
+  void _pindahMinggu(int mingguKe) {
+    setState(() {
+      _mingguKe = mingguKe;
+      // Tanggal terpilih milik minggu lama, jadi saringannya dilepas.
+      _hariTerpilih = null;
+    });
   }
 
   void _pilihHari(DateTime tgl) {
@@ -139,11 +143,14 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
       DateTime(sekarang.year, sekarang.month, sekarang.day + 7 * mingguKe),
     );
 
-    // Saringan tanggal: bila ada tanggal terpilih, hanya sesi tanggal itu yang tampil.
+    // Saringan dua tahap: (1) hanya sesi di minggu yang tampil di strip,
+    // (2) bila ada tanggal terpilih, hanya sesi tanggal itu.
+    final sesiMinggu =
+        sesi.where((s) => hari.any((h) => hariSama(h, s.waktu))).toList();
     final terpilih = _hariTerpilih;
     final tampil = terpilih == null
-        ? sesi
-        : sesi.where((s) => hariSama(s.waktu, terpilih)).toList();
+        ? sesiMinggu
+        : sesiMinggu.where((s) => hariSama(s.waktu, terpilih)).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -166,15 +173,13 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
             ),
             IconButton(
               tooltip: SirkelSayaStrings.mingguSebelumnya,
-              onPressed: mingguKe > 0
-                  ? () => setState(() => _mingguKe = mingguKe - 1)
-                  : null,
+              onPressed: mingguKe > 0 ? () => _pindahMinggu(mingguKe - 1) : null,
               icon: const Icon(Icons.chevron_left),
             ),
             IconButton(
               tooltip: SirkelSayaStrings.mingguBerikutnya,
               onPressed: mingguKe < jumlah - 1
-                  ? () => setState(() => _mingguKe = mingguKe + 1)
+                  ? () => _pindahMinggu(mingguKe + 1)
                   : null,
               icon: const Icon(Icons.chevron_right),
             ),
@@ -219,10 +224,15 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                   title: SirkelSayaStrings.tidakAdaSesiJudul,
                   message: SirkelSayaStrings.tidakAdaSesiPesan,
                 )
-              : const EmptyState(
-                  title: SirkelSayaStrings.jadwalKosongJudul,
-                  message: SirkelSayaStrings.jadwalKosongPesan,
-                )
+              : sesi.isEmpty
+                  ? const EmptyState(
+                      title: SirkelSayaStrings.jadwalKosongJudul,
+                      message: SirkelSayaStrings.jadwalKosongPesan,
+                    )
+                  : const EmptyState(
+                      title: SirkelSayaStrings.tidakAdaSesiMingguJudul,
+                      message: SirkelSayaStrings.tidakAdaSesiMingguPesan,
+                    )
         else
           ..._daftarSesi(
             context,
@@ -343,6 +353,7 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final online = sirkel.mode == ModeBelajar.online;
+    final bisaMasuk = bisaMasukSesi(sesi.waktu, sekarang);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,7 +372,7 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
             children: [
               Card(
                 child: InkWell(
-                  onTap: () => _bukaDetail(sirkel.id),
+                  onTap: () => _bukaSesi(sirkel, sesi),
                   child: Padding(
                     padding: const EdgeInsets.all(AppSizes.sm),
                     child: Row(
@@ -418,7 +429,8 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                   ),
                 ),
               ),
-              // Baris waktu mulai + "Masuk sesi" hanya untuk sesi terdekat.
+              // Baris waktu mulai + tombol sesi hanya untuk sesi terdekat.
+              // Label "Masuk sesi" bila sudah ≤ 15 menit lagi, selain itu "Detail sesi".
               if (terdekat) ...[
                 const SizedBox(height: AppSizes.s),
                 Container(
@@ -449,9 +461,13 @@ class _SirkelSayaScreenState extends State<SirkelSayaScreen> {
                           backgroundColor: scheme.primaryContainer,
                           foregroundColor: scheme.onPrimaryContainer,
                         ),
-                        onPressed: () => _masukSesi(sirkel),
-                        icon: const Icon(Icons.videocam),
-                        label: const Text(SirkelSayaStrings.masukSesi),
+                        onPressed: () => _bukaSesi(sirkel, sesi),
+                        icon: Icon(bisaMasuk ? Icons.videocam : Icons.info_outline),
+                        label: Text(
+                          bisaMasuk
+                              ? SirkelSayaStrings.masukSesi
+                              : SirkelSayaStrings.detailSesi,
+                        ),
                       ),
                     ],
                   ),

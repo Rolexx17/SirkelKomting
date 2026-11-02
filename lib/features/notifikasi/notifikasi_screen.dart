@@ -14,7 +14,7 @@ import 'notifikasi_strings.dart';
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
 
-  /// Hasil `Navigator.pop` saat notifikasi lencana diketuk; Beranda lalu membuka tab Profil.
+  /// Hasil `Navigator.pop` saat notifikasi lencana/mentor diketuk; Beranda lalu membuka tab Profil.
   static const hasilBukaProfil = 'profil';
 
   /// Memecah teks di tanda `**`: potongan berindeks ganjil (yang diapit `**`)
@@ -51,8 +51,10 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     final sirkelId = n.sirkelId;
     if (sirkelId != null) {
       Navigator.of(context).pushNamed(AppRoutes.detailSirkel, arguments: sirkelId);
-    } else if (n.jenis == JenisNotifikasi.lencana) {
-      // Lencana tidak punya halaman sendiri: tutup Notifikasi dan minta Beranda membuka Profil.
+    } else if (n.jenis == JenisNotifikasi.lencana ||
+        n.jenis == JenisNotifikasi.mentor) {
+      // Lencana dan status mentor tampil di Profil: tutup Notifikasi dan minta
+      // Beranda membuka tab Profil.
       Navigator.of(context).pop(NotifikasiScreen.hasilBukaProfil);
     }
   }
@@ -190,16 +192,20 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     final scheme = Theme.of(context).colorScheme;
     final gambar = n.gambar;
 
-    // Lencana memakai ikon, "diterima" memakai sampul sirkel, sisanya avatar orang.
+    // Lencana & mentor memakai kotak ikon, "diterima" memakai sampul sirkel,
+    // sisanya avatar orang. Tanpa gambar → kotak ikon sebagai cadangan.
+    if (n.jenis == JenisNotifikasi.mentor) {
+      return _kotakIkon(
+        Icons.school,
+        scheme.secondaryContainer,
+        scheme.onSecondaryContainer,
+      );
+    }
     if (n.jenis == JenisNotifikasi.lencana || gambar == null) {
-      return Container(
-        width: _ukuranGambar,
-        height: _ukuranGambar,
-        decoration: BoxDecoration(
-          color: scheme.tertiaryContainer,
-          borderRadius: BorderRadius.circular(_radiusLencana),
-        ),
-        child: Icon(Icons.emoji_events, color: scheme.onTertiaryContainer),
+      return _kotakIkon(
+        Icons.emoji_events,
+        scheme.tertiaryContainer,
+        scheme.onTertiaryContainer,
       );
     }
     if (n.jenis == JenisNotifikasi.diterima) {
@@ -211,5 +217,18 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
       );
     }
     return UserAvatar(imagePath: gambar, size: _ukuranGambar);
+  }
+
+  // P5: Container berhias (sudut 14) berisi ikon untuk notifikasi tanpa foto.
+  Widget _kotakIkon(IconData ikon, Color latar, Color warnaIkon) {
+    return Container(
+      width: _ukuranGambar,
+      height: _ukuranGambar,
+      decoration: BoxDecoration(
+        color: latar,
+        borderRadius: BorderRadius.circular(_radiusLencana),
+      ),
+      child: Icon(ikon, color: warnaIkon),
+    );
   }
 }

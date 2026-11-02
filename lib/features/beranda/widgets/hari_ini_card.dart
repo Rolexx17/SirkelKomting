@@ -9,14 +9,15 @@ import '../../sirkel_saya/jadwal_util.dart';
 import '../beranda_strings.dart';
 
 /// Kartu sesi berikutnya berlatar primary: label hari ("HARI INI", "BESOK",
-/// "KAMIS, 5 NOV"), mata kuliah, jam sesi, anggota, dan tombol Masuk sesi.
+/// "KAMIS, 5 NOV"), mata kuliah, jam sesi, anggota, dan tombol ke detail sesi.
 class HariIniCard extends StatelessWidget {
   const HariIniCard({
     super.key,
     required this.sirkel,
     required this.sesi,
     required this.label,
-    required this.onMasukSesi,
+    required this.bisaMasuk,
+    required this.onBukaSesi,
   });
 
   final Sirkel sirkel;
@@ -26,7 +27,11 @@ class HariIniCard extends StatelessWidget {
 
   /// Label hari, dihitung Beranda lewat `BerandaScreen.labelSesi`.
   final String label;
-  final VoidCallback onMasukSesi;
+
+  /// true bila sesi ≤ 15 menit lagi atau sedang berlangsung → tombol "Masuk sesi";
+  /// selain itu "Detail sesi". Keduanya membuka sheet detail sesi.
+  final bool bisaMasuk;
+  final VoidCallback onBukaSesi;
 
   static const _ukuranSampul = 104.0;
   static const _radiusSampul = 20.0;
@@ -135,8 +140,12 @@ class HariIniCard extends StatelessWidget {
                       backgroundColor: scheme.surface,
                       foregroundColor: scheme.primary,
                     ),
-                    onPressed: onMasukSesi,
-                    child: const Text(BerandaStrings.masukSesi),
+                    onPressed: onBukaSesi,
+                    child: Text(
+                      bisaMasuk
+                          ? BerandaStrings.masukSesi
+                          : BerandaStrings.detailSesi,
+                    ),
                   ),
                 ],
               ),

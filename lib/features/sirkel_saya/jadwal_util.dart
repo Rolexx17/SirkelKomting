@@ -70,9 +70,20 @@ String tanggalSingkat(DateTime t) => SirkelSayaStrings.tanggalBulan(
 String jamDari(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}.${t.minute.toString().padLeft(2, '0')}';
 
+/// Lama satu sesi; data contoh tidak punya jam selesai (mockup: 19.00–20.30).
+const durasiSesi = Duration(minutes: 90);
+
+/// Pengguna boleh masuk mulai 15 menit sebelum sesi dimulai.
+const batasMasukAwal = Duration(minutes: 15);
+
+/// true bila [sekarang] berada di rentang 15 menit sebelum mulai sampai sesi selesai.
+bool bisaMasukSesi(DateTime waktu, DateTime sekarang) =>
+    !sekarang.isBefore(waktu.subtract(batasMasukAwal)) &&
+    sekarang.isBefore(waktu.add(durasiSesi));
+
 /// Keterangan kapan sesi dimulai, dihitung dari selisih [waktu] dan [sekarang]:
 /// < 60 menit → "Mulai dalam N menit"; < 24 jam → "Mulai dalam N jam";
-/// besok → "Besok, 19.00"; selebihnya → "Kamis, 19.00".
+/// besok → "Besok, 19.00"; ≥ 2 hari → "Mulai N hari lagi".
 String teksMulai(DateTime waktu, DateTime sekarang) {
   final selisih = waktu.difference(sekarang);
   if (selisih.inMinutes < 60) {
@@ -81,7 +92,8 @@ String teksMulai(DateTime waktu, DateTime sekarang) {
   }
   if (selisih.inHours < 24) return SirkelSayaStrings.mulaiJam(selisih.inHours);
 
-  final jam = jamDari(waktu);
-  if (selisihHari(sekarang, waktu) == 1) return SirkelSayaStrings.besokJam(jam);
-  return SirkelSayaStrings.hariJam(namaHariDari(waktu), jam);
+  // Selebihnya dihitung per tanggal kalender, bukan per 24 jam.
+  final hari = selisihHari(sekarang, waktu);
+  if (hari <= 1) return SirkelSayaStrings.besokJam(jamDari(waktu));
+  return SirkelSayaStrings.mulaiHari(hari);
 }

@@ -16,16 +16,34 @@ class SirkelSayaStrings {
   static const tidakAdaSesiJudul = 'Tidak ada sesi di hari ini';
   static const tidakAdaSesiPesan =
       'Pilih tanggal lain atau tampilkan semua jadwal.';
+  static const tidakAdaSesiMingguJudul = 'Tidak ada sesi minggu ini';
+  static const tidakAdaSesiMingguPesan =
+      'Geser ke minggu lain dengan tombol panah.';
 
   // Keterangan waktu mulai sesi terdekat
   static String mulaiMenit(int menit) => 'Mulai dalam $menit menit';
   static String mulaiJam(int jam) => 'Mulai dalam $jam jam';
   static String besokJam(String jam) => 'Besok, $jam';
-  static String hariJam(String hari, String jam) => '$hari, $jam';
+  static String mulaiHari(int hari) => 'Mulai $hari hari lagi';
 
+  // Tombol sesi: "Masuk sesi" bila sudah waktunya, selain itu "Detail sesi".
   static const masukSesi = 'Masuk sesi';
-  static String masukSesiInfo(String mataKuliah, String lokasi) =>
-      'Membuka $lokasi untuk sesi $mataKuliah (simulasi, tanpa server).';
+  static const detailSesi = 'Detail sesi';
+
+  // Sheet detail sesi
+  static const waktu = 'Waktu';
+  static const lokasi = 'Lokasi';
+  static String rentangJam(String mulai, String selesai) => '$mulai–$selesai';
+  static String waktuSesi(String tanggal, String jam) => '$tanggal · $jam';
+
+  /// Tautan rapat simulasi (tanpa server).
+  static String tautanOnline(String sirkelId) => 'meet.sirkel.app/$sirkelId';
+  static const salinTautan = 'Salin tautan';
+  static const tautanDisalin = 'Tautan disalin';
+  static String bantuanMasuk(int menit) =>
+      'Bisa masuk $menit menit sebelum sesi dimulai';
+  static String membuka(String lokasi) => 'Membuka $lokasi… (simulasi)';
+  static const lihatDetailSirkel = 'Lihat detail sirkel';
 
   static const jadwalKosongJudul = 'Belum ada jadwal';
   static const jadwalKosongPesan = 'Gabung sirkel untuk melihat jadwal sesimu.';
